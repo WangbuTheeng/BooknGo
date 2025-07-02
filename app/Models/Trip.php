@@ -58,7 +58,7 @@ class Trip extends Model
         $bookedSeatsCount = \DB::table('booking_seats')
             ->join('bookings', 'booking_seats.booking_id', '=', 'bookings.id')
             ->where('bookings.trip_id', $this->id)
-            ->where('bookings.status', 'booked')
+            ->whereIn('bookings.status', ['pending', 'booked']) // Include both pending and booked
             ->count();
 
         return $totalSeats - $bookedSeatsCount;
@@ -69,8 +69,56 @@ class Trip extends Model
      */
     public function isBookable()
     {
-        return $this->status === 'active' && 
+        return $this->status === 'active' &&
                $this->departure_datetime > now() &&
                $this->available_seats_count > 0;
+    }
+
+    /**
+     * Check if trip has finished (departure time has passed)
+     */
+    public function isFinished()
+    {
+        return $this->departure_datetime < now();
+    }
+
+    /**
+     * Check if trip is active (not finished and status is active)
+     */
+    public function isActive()
+    {
+        return $this->status === 'active' && !$this->isFinished();
+    }
+
+    /**
+     * Get trip status display text
+     */
+    public function getStatusDisplayAttribute()
+    {
+        if ($this->isFinished()) {
+            return 'Finished';
+        }
+
+        if ($this->status === 'active') {
+            return 'Active';
+        }
+
+        return ucfirst($this->status);
+    }
+
+    /**
+     * Get trip status color for UI
+     */
+    public function getStatusColorAttribute()
+    {
+        if ($this->isFinished()) {
+            return 'red';
+        }
+
+        if ($this->status === 'active') {
+            return 'green';
+        }
+
+        return 'gray';
     }
 }

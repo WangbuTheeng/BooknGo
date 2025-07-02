@@ -26,9 +26,9 @@
                                                 {{ $booking->trip->route->fromCity->name }} to {{ $booking->trip->route->toCity->name }}
                                             </h3>
                                         </div>
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                                             @switch($booking->status)
-                                                @case('confirmed') bg-green-100 text-green-800 @break
+                                                @case('booked') bg-green-100 text-green-800 @break
                                                 @case('pending') bg-yellow-100 text-yellow-800 @break
                                                 @case('cancelled') bg-red-100 text-red-800 @break
                                                 @default bg-gray-100 text-gray-800

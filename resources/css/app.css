@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Hide any unwanted loading indicators */
+.loading-indicator,
+.loading-box,
+[data-loading],
+.htmx-indicator {
+    display: none !important;
+}
+
+/* Hide browser default loading indicators */
+::-webkit-progress-bar,
+::-webkit-progress-value {
+    display: none !important;
+}
+
+/* Ensure no blue loading boxes appear */
+*[style*="background-color: blue"],
+*[style*="background: blue"],
+.bg-blue-500.fixed,
+.bg-blue-600.fixed {
+    display: none !important;
+}

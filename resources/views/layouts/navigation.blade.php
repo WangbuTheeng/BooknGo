@@ -33,11 +33,12 @@
                         @endif
                     </x-nav-link>
 
-                    @if(Auth::user()->isUser())
-                        <x-nav-link :href="url('/')" :active="request()->is('/')">
-                            {{ __('Search Trips') }}
-                        </x-nav-link>
-                    @endif
+                    <x-nav-link :href="url('/')" :active="request()->is('/')">
+                        {{ __('Search Trips') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('public.operators.index')" :active="request()->routeIs('public.operators.*')">
+                        {{ __('Operators') }}
+                    </x-nav-link>
 
                     @if(Auth::user()->isAdmin())
                         <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
@@ -123,11 +124,12 @@
                 @endif
             </x-responsive-nav-link>
 
-            @if(Auth::user()->isUser())
-                <x-responsive-nav-link :href="url('/')" :active="request()->is('/')">
-                    {{ __('Search Trips') }}
-                </x-responsive-nav-link>
-            @endif
+            <x-responsive-nav-link :href="url('/')" :active="request()->is('/')">
+                {{ __('Search Trips') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('public.operators.index')" :active="request()->routeIs('public.operators.*')">
+                {{ __('Operators') }}
+            </x-responsive-nav-link>
 
             @if(Auth::user()->isAdmin())
                 <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">

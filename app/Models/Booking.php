@@ -22,6 +22,11 @@ class Booking extends Model
         'total_amount',
         'payment_status',
         'cancellation_reason',
+        'expires_at',
+    ];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -88,7 +93,49 @@ class Booking extends Model
      */
     public function canBeCancelled()
     {
-        return $this->status === 'booked' && 
+        return in_array($this->status, ['pending', 'booked']) &&
                $this->trip->departure_datetime > now()->addHours(2);
+    }
+
+    /**
+     * Check if booking has expired
+     */
+    public function isExpired()
+    {
+        return $this->expires_at && $this->expires_at < now();
+    }
+
+    /**
+     * Check if booking can be deleted by user
+     */
+    public function canBeDeleted()
+    {
+        return in_array($this->status, ['pending', 'booked']) &&
+               $this->payment_status === 'pending' &&
+               !$this->isExpired();
+    }
+
+    /**
+     * Get remaining time until expiry
+     */
+    public function getRemainingTimeAttribute()
+    {
+        if (!$this->expires_at || $this->isExpired()) {
+            return null;
+        }
+
+        return $this->expires_at->diffForHumans();
+    }
+
+    /**
+     * Get remaining minutes until expiry
+     */
+    public function getRemainingMinutesAttribute()
+    {
+        if (!$this->expires_at || $this->isExpired()) {
+            return 0;
+        }
+
+        return max(0, now()->diffInMinutes($this->expires_at, false));
     }
 }

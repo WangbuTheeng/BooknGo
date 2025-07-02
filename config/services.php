@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'esewa' => [
+        'merchant_id' => env('ESEWA_MERCHANT_ID', 'EPAYTEST'),
+        'secret_key' => env('ESEWA_SECRET_KEY', '8gBm/:&EnhH.1/q'),
+        'base_url' => env('ESEWA_BASE_URL', 'https://uat.esewa.com.np'),
+    ],
+
 ];

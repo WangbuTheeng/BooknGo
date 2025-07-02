@@ -7,6 +7,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\PublicController;
 use App\Models\City;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +24,11 @@ Route::get('/dashboard', function () {
 Route::get('/search', [TripController::class, 'search'])->name('trips.search');
 Route::get('/trips/{trip}/seats', [TripController::class, 'selectSeats'])->name('trips.select-seats');
 Route::post('/trips/{trip}/book', [BookingController::class, 'store'])->name('trips.book.store');
+
+// Public operators and buses
+Route::get('/operators', [PublicController::class, 'operators'])->name('public.operators.index');
+Route::get('/operators/{operator}/buses', [PublicController::class, 'operatorBuses'])->name('public.operators.buses');
+Route::get('/buses/{bus}/trips', [PublicController::class, 'busTrips'])->name('public.buses.trips');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -58,6 +64,10 @@ Route::middleware('auth')->group(function () {
     Route::post('bookings/{booking}/payment', [PaymentController::class, 'process'])->name('payments.process');
     Route::get('payments/{payment}/callback', [PaymentController::class, 'callback'])->name('payments.callback');
     Route::post('payments/{payment}/confirm-cash', [PaymentController::class, 'confirmCash'])->name('payments.confirm-cash');
+
+    // eSewa payment callbacks
+    Route::get('payments/esewa/success', [PaymentController::class, 'esewaSuccess'])->name('payments.esewa.success');
+    Route::get('payments/esewa/failure', [PaymentController::class, 'esewaFailure'])->name('payments.esewa.failure');
 });
 
 // Admin routes

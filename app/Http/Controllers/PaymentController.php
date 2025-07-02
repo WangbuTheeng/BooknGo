@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Booking;
+use App\Services\ESewaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,10 @@ class PaymentController extends Controller
 
         if ($booking->status !== 'booked') {
             return back()->withErrors(['error' => 'Payment is not required for this booking.']);
+        }
+
+        if ($booking->isExpired()) {
+            return back()->withErrors(['error' => 'This booking has expired. Please create a new booking.']);
         }
 
         if ($request->amount != $booking->total_amount) {
@@ -176,19 +181,46 @@ class PaymentController extends Controller
      */
     private function redirectToPaymentGateway(Payment $payment, string $method)
     {
-        // This would integrate with actual payment gateways
-        // For now, we'll simulate the process
-        
-        $callbackUrl = route('payments.callback', $payment);
-        
-        if ($method === 'esewa') {
-            // eSewa integration would go here
-            return view('payments.esewa', compact('payment', 'callbackUrl'));
-        } elseif ($method === 'khalti') {
+        if ($method === 'eSewa') {
+            $esewaService = new ESewaService();
+            $formData = $esewaService->generatePaymentForm($payment->booking, $payment);
+            $paymentUrl = $esewaService->getPaymentUrl();
+
+            return view('payments.esewa', compact('payment', 'formData', 'paymentUrl'));
+        } elseif ($method === 'Khalti') {
             // Khalti integration would go here
-            return view('payments.khalti', compact('payment', 'callbackUrl'));
+            return view('payments.khalti', compact('payment'));
         }
 
         return back()->withErrors(['error' => 'Payment method not supported yet.']);
+    }
+
+    /**
+     * Handle eSewa success callback
+     */
+    public function esewaSuccess(Request $request)
+    {
+        $esewaService = new ESewaService();
+        $result = $esewaService->handleSuccessCallback($request);
+
+        if ($result['status'] === 'success') {
+            return redirect()->route('bookings.show', $result['payment']->booking)
+                           ->with('success', 'Payment completed successfully!');
+        }
+
+        return redirect()->route('bookings.index')
+                       ->withErrors(['error' => $result['message']]);
+    }
+
+    /**
+     * Handle eSewa failure callback
+     */
+    public function esewaFailure(Request $request)
+    {
+        $esewaService = new ESewaService();
+        $result = $esewaService->handleFailureCallback($request);
+
+        return redirect()->route('bookings.index')
+                       ->withErrors(['error' => $result['message']]);
     }
 }

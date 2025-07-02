@@ -90,7 +90,7 @@ class BookingController extends Controller
             // Calculate total amount
             $totalAmount = $trip->price * $seats->count();
 
-            // Create booking
+            // Create booking with expiry time (15 minutes from now)
             $booking = Booking::create([
                 'user_id' => Auth::id(),
                 'trip_id' => $trip->id,
@@ -99,7 +99,9 @@ class BookingController extends Controller
                 'passenger_phone' => $request->passenger_phone,
                 'passenger_email' => $request->passenger_email,
                 'total_amount' => $totalAmount,
-                'status' => 'booked',
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'expires_at' => now()->addMinutes(15),
             ]);
 
             // Create booking seats
@@ -173,7 +175,14 @@ class BookingController extends Controller
     {
         $this->authorize('view', $booking);
 
-        if ($booking->status !== 'pending') {
+        // Check if booking has expired
+        if ($booking->isExpired()) {
+            return redirect()->route('bookings.show', $booking)
+                           ->withErrors(['error' => 'This booking has expired and cannot be paid for.']);
+        }
+
+        // Check if payment is already completed
+        if ($booking->payment_status !== 'pending') {
             return redirect()->route('bookings.show', $booking)
                            ->withErrors(['error' => 'Payment is not required for this booking.']);
         }
@@ -205,6 +214,40 @@ class BookingController extends Controller
 
         return redirect()->route('bookings.index')
                         ->with('success', 'Booking cancelled successfully.');
+    }
+
+    /**
+     * Delete a booking (user cancellation)
+     */
+    public function destroy(Booking $booking)
+    {
+        $this->authorize('view', $booking);
+
+        if (!$booking->canBeDeleted()) {
+            return back()->withErrors(['error' => 'This booking cannot be deleted. It may have expired or payment is already processed.']);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Delete associated booking seats
+            $booking->bookingSeats()->delete();
+
+            // Delete associated payments
+            $booking->payments()->delete();
+
+            // Delete the booking
+            $booking->delete();
+
+            DB::commit();
+
+            return redirect()->route('bookings.index')
+                           ->with('success', 'Booking cancelled successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->withErrors(['error' => 'Failed to cancel booking. Please try again.']);
+        }
     }
 
     /**
