@@ -16,8 +16,8 @@
 </head>
 <body class="font-sans antialiased bg-gray-50">
     <div class="min-h-screen">
-        <!-- Navigation -->
-        @include('layouts.navigation')
+        <!-- Modern Navbar -->
+        @include('components.modern-navbar')
 
         <!-- Page Header -->
         <header class="bg-white shadow">
@@ -34,7 +34,7 @@
         </header>
 
         <!-- Main Content -->
-        <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8" x-data="{ editingPassenger: false }">
             <!-- Booking Reference Card -->
             <div class="bg-white overflow-hidden shadow rounded-lg mb-6">
                 <div class="px-6 py-4 border-b border-gray-200">
@@ -192,27 +192,83 @@
                         <div class="space-y-6">
                             <!-- Passenger Information -->
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                    <svg class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                    </svg>
-                                    Passenger Details
-                                </h3>
-                                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-medium text-gray-500">Name</span>
-                                        <span class="text-sm text-gray-900 font-semibold">{{ $booking->passenger_name }}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-medium text-gray-500">Phone</span>
-                                        <span class="text-sm text-gray-900">{{ $booking->passenger_phone }}</span>
-                                    </div>
-                                    @if($booking->passenger_email)
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-sm font-medium text-gray-500">Email</span>
-                                            <span class="text-sm text-gray-900">{{ $booking->passenger_email }}</span>
-                                        </div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                        Passenger Details
+                                    </h3>
+                                    @if($booking->passenger_name === 'Temporary Booking' && $booking->status === 'pending')
+                                        <button @click="editingPassenger = !editingPassenger" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                            <span x-show="!editingPassenger">Edit Details</span>
+                                            <span x-show="editingPassenger">Cancel</span>
+                                        </button>
                                     @endif
+                                </div>
+                                
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <!-- Display Mode -->
+                                    <div x-show="!editingPassenger" class="space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-medium text-gray-500">Name</span>
+                                            <span class="text-sm text-gray-900 font-semibold">{{ $booking->passenger_name }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-medium text-gray-500">Phone</span>
+                                            <span class="text-sm text-gray-900">{{ $booking->passenger_phone }}</span>
+                                        </div>
+                                        @if($booking->passenger_email)
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-sm font-medium text-gray-500">Email</span>
+                                                <span class="text-sm text-gray-900">{{ $booking->passenger_email }}</span>
+                                            </div>
+                                        @endif
+                                        
+                                        @if($booking->passenger_name === 'Temporary Booking')
+                                            <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                                <p class="text-xs text-yellow-800">Please update passenger details to complete your booking.</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    
+                                    <!-- Edit Mode -->
+                                    <div x-show="editingPassenger" class="space-y-4">
+                                        <form action="{{ route('bookings.update-passenger', $booking) }}" method="POST">
+                                            @csrf
+                                            @method('PATCH')
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                                <input type="text" name="passenger_name" value="{{ $booking->passenger_name === 'Temporary Booking' ? '' : $booking->passenger_name }}" 
+                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                       placeholder="Enter passenger name" required>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                                <input type="text" name="passenger_phone" value="{{ $booking->passenger_phone === 'TBD' ? '' : $booking->passenger_phone }}" 
+                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                       placeholder="Enter phone number" required>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
+                                                <input type="email" name="passenger_email" value="{{ $booking->passenger_email }}" 
+                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                       placeholder="Enter email address">
+                                            </div>
+                                            
+                                            <div class="flex space-x-2">
+                                                <button type="submit" class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                                                    Save Details
+                                                </button>
+                                                <button type="button" @click="editingPassenger = false" class="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
 

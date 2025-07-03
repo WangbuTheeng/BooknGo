@@ -265,7 +265,14 @@ class TripController extends Controller
             return redirect()->back()->withErrors(['error' => 'This trip is not available for booking.']);
         }
 
-        $trip->load(['bus.operator.user', 'route.fromCity', 'route.toCity']);
+        // Check if user is authenticated - redirect to login if not
+        if (!Auth::check()) {
+            $currentUrl = request()->fullUrl();
+            return redirect()->route('login', ['redirect' => urlencode($currentUrl)])
+                           ->with('info', 'Please login to view available seats and make a booking.');
+        }
+
+        $trip->load(['bus.operator.user', 'route.fromCity', 'route.toCity', 'bus.seats']);
 
         return view('trips.seat-selection', compact('trip'));
     }
@@ -275,7 +282,7 @@ class TripController extends Controller
      */
     public function seatAvailability(Trip $trip)
     {
-        $seats = $trip->bus->seats()->get()->map(function ($seat) use ($trip) {
+        $seats = $trip->bus->seats()->orderByRaw('CAST(seat_number AS UNSIGNED)')->get()->map(function ($seat) use ($trip) {
             return [
                 'id' => $seat->id,
                 'seat_number' => $seat->seat_number,

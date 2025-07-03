@@ -36,7 +36,7 @@
                     <x-nav-link :href="url('/')" :active="request()->is('/')">
                         {{ __('Search Trips') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('public.operators.index')" :active="request()->routeIs('public.operators.*')">
+                    <x-nav-link :href="route('operators.index')" :active="request()->routeIs('operators.*')">
                         {{ __('Operators') }}
                     </x-nav-link>
 
@@ -127,7 +127,7 @@
             <x-responsive-nav-link :href="url('/')" :active="request()->is('/')">
                 {{ __('Search Trips') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('public.operators.index')" :active="request()->routeIs('public.operators.*')">
+            <x-responsive-nav-link :href="route('operators.index')" :active="request()->routeIs('operators.*')">
                 {{ __('Operators') }}
             </x-responsive-nav-link>
 

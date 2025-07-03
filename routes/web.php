@@ -7,6 +7,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PublicController;
 use App\Models\City;
 use Illuminate\Support\Facades\Route;
@@ -25,10 +26,11 @@ Route::get('/search', [TripController::class, 'search'])->name('trips.search');
 Route::get('/trips/{trip}/seats', [TripController::class, 'selectSeats'])->name('trips.select-seats');
 Route::post('/trips/{trip}/book', [BookingController::class, 'store'])->name('trips.book.store');
 
-// Public operators and buses
-Route::get('/operators', [PublicController::class, 'operators'])->name('public.operators.index');
-Route::get('/operators/{operator}/buses', [PublicController::class, 'operatorBuses'])->name('public.operators.buses');
-Route::get('/buses/{bus}/trips', [PublicController::class, 'busTrips'])->name('public.buses.trips');
+// Public operators and buses routes (using browse prefix to avoid conflicts)
+Route::get('/browse/operators', [PublicController::class, 'operators'])->name('public.operators.index');
+Route::get('/browse/operators/{operator}', [PublicController::class, 'showOperator'])->name('public.operators.show');
+Route::get('/browse/operators/{operator}/buses', [PublicController::class, 'operatorBuses'])->name('public.operators.buses');
+Route::get('/browse/buses/{bus}/trips', [PublicController::class, 'busTrips'])->name('public.buses.trips');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -58,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::get('bookings/{booking}/payment', [BookingController::class, 'payment'])->name('bookings.payment');
     Route::get('bookings/{booking}/confirmation', [BookingController::class, 'confirmation'])->name('bookings.confirmation');
     Route::post('bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
+    Route::patch('bookings/{booking}/passenger', [BookingController::class, 'updatePassenger'])->name('bookings.update-passenger');
 
     // Payment routes
     Route::resource('payments', PaymentController::class)->only(['index', 'show']);
@@ -68,6 +71,13 @@ Route::middleware('auth')->group(function () {
     // eSewa payment callbacks
     Route::get('payments/esewa/success', [PaymentController::class, 'esewaSuccess'])->name('payments.esewa.success');
     Route::get('payments/esewa/failure', [PaymentController::class, 'esewaFailure'])->name('payments.esewa.failure');
+
+    // Stripe payment callbacks
+    Route::get('payments/stripe/success', [PaymentController::class, 'stripeSuccess'])->name('payments.stripe.success');
+    Route::get('payments/stripe/failure', [PaymentController::class, 'stripeFailure'])->name('payments.stripe.failure');
+
+    // Operator routes
+    Route::resource('operators', OperatorController::class);
 });
 
 // Admin routes

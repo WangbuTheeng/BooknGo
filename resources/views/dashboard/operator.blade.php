@@ -121,6 +121,26 @@
                         <div class="text-sm text-gray-600">View fleet</div>
                     </div>
                 </a>
+
+                <a href="{{ route('public.operators.index') }}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150 ease-in-out">
+                    <svg class="w-8 h-8 text-indigo-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <div>
+                        <div class="font-medium text-gray-900">Browse Operators</div>
+                        <div class="text-sm text-gray-600">Book from other operators</div>
+                    </div>
+                </a>
+
+                <a href="{{ route('bookings.index') }}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150 ease-in-out">
+                    <svg class="w-8 h-8 text-teal-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    <div>
+                        <div class="font-medium text-gray-900">My Bookings</div>
+                        <div class="text-sm text-gray-600">View my trip bookings</div>
+                    </div>
+                </a>
             </div>
         </div>
     </div>

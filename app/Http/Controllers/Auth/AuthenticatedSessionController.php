@@ -28,6 +28,19 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Check for redirect parameter from the request
+        $redirectUrl = $request->query('redirect');
+        
+        if ($redirectUrl) {
+            // Decode and validate the URL to ensure it's safe
+            $decodedUrl = urldecode($redirectUrl);
+            
+            // Simple validation to ensure it's a local URL
+            if (str_starts_with($decodedUrl, '/') || str_starts_with($decodedUrl, url('/'))) {
+                return redirect($decodedUrl);
+            }
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

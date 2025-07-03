@@ -58,7 +58,12 @@ class Trip extends Model
         $bookedSeatsCount = \DB::table('booking_seats')
             ->join('bookings', 'booking_seats.booking_id', '=', 'bookings.id')
             ->where('bookings.trip_id', $this->id)
-            ->whereIn('bookings.status', ['pending', 'booked']) // Include both pending and booked
+            ->whereIn('bookings.status', ['pending', 'booked'])
+            ->where(function ($query) {
+                // Include bookings that haven't expired or are already booked
+                $query->where('bookings.expires_at', '>', now())
+                      ->orWhere('bookings.status', 'booked');
+            })
             ->count();
 
         return $totalSeats - $bookedSeatsCount;

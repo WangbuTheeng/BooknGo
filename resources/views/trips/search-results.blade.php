@@ -12,47 +12,25 @@
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
 
         <!-- Styles / Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/notifications.js'])
+        
+        <!-- Flash message meta tags for notifications -->
+        @if(session('success'))
+            <meta name="flash-success" content="{{ session('success') }}">
+        @endif
+        @if(session('error'))
+            <meta name="flash-error" content="{{ session('error') }}">
+        @endif
+        @if(session('info'))
+            <meta name="flash-info" content="{{ session('info') }}">
+        @endif
+        @if(session('warning'))
+            <meta name="flash-warning" content="{{ session('warning') }}">
+        @endif
     </head>
     <body class="bg-gray-50 font-sans antialiased">
-        <!-- Header -->
-        <header class="bg-white shadow-sm border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
-                    <div class="flex items-center">
-                        <a href="{{ url('/') }}" class="text-2xl font-bold text-blue-600">BooknGo</a>
-                        <span class="ml-2 text-sm text-gray-500">Festival Bus Booking</span>
-                    </div>
-                    @if (Route::has('login'))
-                        <nav class="flex items-center space-x-4">
-                            @auth
-                                <a
-                                    href="{{ url('/dashboard') }}"
-                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-                                >
-                                    Dashboard
-                                </a>
-                            @else
-                                <a
-                                    href="{{ route('login') }}"
-                                    class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out"
-                                >
-                                    Log in
-                                </a>
-                                @if (Route::has('register'))
-                                    <a
-                                        href="{{ route('register') }}"
-                                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-                                    >
-                                        Register
-                                    </a>
-                                @endif
-                            @endauth
-                        </nav>
-                    @endif
-                </div>
-            </div>
-        </header>
+        <!-- Modern Navbar -->
+        @include('components.modern-navbar')
 
         <!-- Search Summary -->
         <div class="bg-blue-600 text-white py-6">
@@ -212,12 +190,24 @@
                                     <div class="lg:col-span-2">
                                         <div class="text-center">
                                             @if($trip->isBookable())
-                                                <button 
-                                                    onclick="selectSeats({{ $trip->id }})"
-                                                    class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-                                                >
-                                                    Select Seats
-                                                </button>
+                                                @auth
+                                                    <button 
+                                                        onclick="selectSeats({{ $trip->id }})"
+                                                        class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+                                                    >
+                                                        Select Seats
+                                                    </button>
+                                                @else
+                                                    <button 
+                                                        onclick="showLoginModal({{ $trip->id }})"
+                                                        class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out"
+                                                    >
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                        </svg>
+                                                        Login to Book
+                                                    </button>
+                                                @endauth
                                             @else
                                                 <button 
                                                     disabled
@@ -282,6 +272,86 @@
         <script>
             function selectSeats(tripId) {
                 window.location.href = `/trips/${tripId}/seats`;
+            }
+
+            function showLoginModal(tripId) {
+                // Create modal overlay
+                const modalOverlay = document.createElement('div');
+                modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modalOverlay.innerHTML = `
+                    <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+                        <div class="text-center mb-6">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Login Required</h3>
+                            <p class="text-gray-600">You need to be logged in to view available seats and book tickets. Please choose an option:</p>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <button onclick="redirectToLogin(${tripId})" 
+                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition duration-150 flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                                </svg>
+                                Login to Existing Account
+                            </button>
+                            
+                            <button onclick="redirectToRegister(${tripId})" 
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition duration-150 flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                                </svg>
+                                Create New Account
+                            </button>
+                            
+                            <button onclick="closeModal()" 
+                                    class="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 px-4 rounded-lg font-medium transition duration-150">
+                                Cancel
+                            </button>
+                        </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-gray-200">
+                            <div class="flex items-center text-sm text-gray-600">
+                                <svg class="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                After login, you'll be able to view and select seats
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Close modal when clicking outside
+                modalOverlay.onclick = (e) => {
+                    if (e.target === modalOverlay) {
+                        closeModal();
+                    }
+                };
+                
+                document.body.appendChild(modalOverlay);
+                window.currentModal = modalOverlay;
+            }
+
+            function redirectToLogin(tripId) {
+                const seatSelectionUrl = `/trips/${tripId}/seats`;
+                const returnUrl = encodeURIComponent(seatSelectionUrl);
+                window.location.href = `/login?redirect=${returnUrl}`;
+            }
+
+            function redirectToRegister(tripId) {
+                const seatSelectionUrl = `/trips/${tripId}/seats`;
+                const returnUrl = encodeURIComponent(seatSelectionUrl);
+                window.location.href = `/register?redirect=${returnUrl}`;
+            }
+
+            function closeModal() {
+                if (window.currentModal) {
+                    document.body.removeChild(window.currentModal);
+                    window.currentModal = null;
+                }
             }
         </script>
     </body>

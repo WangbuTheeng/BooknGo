@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\Booking;
 use App\Services\ESewaService;
+use App\Services\StripeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,11 +44,11 @@ class PaymentController extends Controller
         $this->authorize('view', $booking);
 
         $request->validate([
-            'payment_method' => 'required|in:eSewa,Khalti,Cash',
+            'payment_method' => 'required|in:eSewa,Khalti,Cash,Stripe',
             'amount' => 'required|numeric|min:0',
         ]);
 
-        if ($booking->status !== 'booked') {
+        if ($booking->payment_status !== 'pending') {
             return back()->withErrors(['error' => 'Payment is not required for this booking.']);
         }
 
@@ -187,6 +188,16 @@ class PaymentController extends Controller
             $paymentUrl = $esewaService->getPaymentUrl();
 
             return view('payments.esewa', compact('payment', 'formData', 'paymentUrl'));
+        } elseif ($method === 'Stripe') {
+            $stripeService = new StripeService();
+            try {
+                $paymentIntent = $stripeService->createPaymentIntent($payment->booking, $payment);
+                $publishableKey = $stripeService->getPublishableKey();
+
+                return view('payments.stripe', compact('payment', 'paymentIntent', 'publishableKey'));
+            } catch (\Exception $e) {
+                return back()->withErrors(['error' => 'Failed to initialize Stripe payment: ' . $e->getMessage()]);
+            }
         } elseif ($method === 'Khalti') {
             // Khalti integration would go here
             return view('payments.khalti', compact('payment'));
@@ -219,6 +230,44 @@ class PaymentController extends Controller
     {
         $esewaService = new ESewaService();
         $result = $esewaService->handleFailureCallback($request);
+
+        return redirect()->route('bookings.index')
+                       ->withErrors(['error' => $result['message']]);
+    }
+
+    /**
+     * Handle Stripe success callback
+     */
+    public function stripeSuccess(Request $request)
+    {
+        $request->validate([
+            'payment_intent' => 'required|string',
+        ]);
+
+        $stripeService = new StripeService();
+        $result = $stripeService->handleSuccessfulPayment($request->payment_intent);
+
+        if ($result['status'] === 'success') {
+            return redirect()->route('bookings.show', $result['payment']->booking)
+                           ->with('success', 'Payment completed successfully!');
+        }
+
+        return redirect()->route('bookings.index')
+                       ->withErrors(['error' => $result['message']]);
+    }
+
+    /**
+     * Handle Stripe failure callback
+     */
+    public function stripeFailure(Request $request)
+    {
+        $request->validate([
+            'payment_intent' => 'required|string',
+            'error' => 'nullable|string',
+        ]);
+
+        $stripeService = new StripeService();
+        $result = $stripeService->handleFailedPayment($request->payment_intent, $request->error);
 
         return redirect()->route('bookings.index')
                        ->withErrors(['error' => $result['message']]);

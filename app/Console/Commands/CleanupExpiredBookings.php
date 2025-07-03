@@ -32,7 +32,7 @@ class CleanupExpiredBookings extends Command
         // Find expired bookings that are still pending payment
         $expiredBookings = Booking::where('expires_at', '<', now())
             ->where('payment_status', 'pending')
-            ->where('status', 'booked')
+            ->where('status', 'pending')
             ->get();
 
         if ($expiredBookings->isEmpty()) {

@@ -4,30 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bus Operators - BooknGo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-white shadow">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="{{ url('/') }}" class="text-xl font-bold text-blue-600">BooknGo</a>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{{ url('/') }}" class="text-gray-700 hover:text-blue-600">Home</a>
-                    <a href="{{ route('trips.search') }}" class="text-gray-700 hover:text-blue-600">Search Trips</a>
-                    <a href="{{ route('public.operators.index') }}" class="text-blue-600 font-medium">Operators</a>
-                    @auth
-                        <a href="{{ route('dashboard') }}" class="text-gray-700 hover:text-blue-600">Dashboard</a>
-                    @else
-                        <a href="{{ route('login') }}" class="text-gray-700 hover:text-blue-600">Login</a>
-                        <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Register</a>
-                    @endauth
-                </div>
-            </div>
-        </div>
-    </nav>
+    <!-- Modern Navbar -->
+    @include('components.modern-navbar')
 
     <!-- Header -->
     <div class="bg-white shadow">
@@ -39,6 +20,28 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        @auth
+            @if(Auth::user()->isOperator())
+                <!-- Operator Notice -->
+                <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-blue-800">
+                                Browse & Book from Other Operators
+                            </h3>
+                            <div class="mt-2 text-sm text-blue-700">
+                                <p>As an operator, you can book trips from other operators for your personal travel or for your customers. All bookings will appear in your "My Bookings" section.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        @endauth
         @if($operators->count() > 0)
             <!-- Operators Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -82,8 +85,8 @@
                             </div>
 
                             <div class="mt-6">
-                                <a href="{{ route('public.operators.buses', $operator) }}" class="w-full bg-blue-600 border border-transparent rounded-md py-2 px-4 inline-flex justify-center text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    View Buses
+                                <a href="{{ route('public.operators.show', $operator) }}" class="w-full bg-blue-600 border border-transparent rounded-md py-2 px-4 inline-flex justify-center text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    View Details & Book
                                 </a>
                             </div>
                         </div>

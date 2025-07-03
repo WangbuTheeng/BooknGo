@@ -45,6 +45,12 @@ class BookingController extends Controller
             return redirect()->back()->withErrors(['error' => 'This trip is not available for booking.']);
         }
 
+        // If user is not authenticated, redirect to seat selection with a message
+        if (!Auth::check()) {
+            return redirect()->route('trips.select-seats', $trip)
+                           ->with('info', 'Please select your seats first, then log in to complete your booking.');
+        }
+
         $trip->load(['bus.operator.user', 'route.fromCity', 'route.toCity']);
 
         return view('trips.book', compact('trip'));
@@ -56,12 +62,28 @@ class BookingController extends Controller
     public function store(Request $request, Trip $trip)
     {
         $request->validate([
-            'passenger_name' => 'required|string|max:255',
-            'passenger_phone' => 'required|string|max:20',
+            'passenger_name' => 'string|max:255',
+            'passenger_phone' => 'string|max:20', 
             'passenger_email' => 'nullable|email|max:255',
             'seat_ids' => 'required|array|min:1',
             'seat_ids.*' => 'exists:seats,id',
+            'action' => 'nullable|in:hold,payment', // New field for action type
         ]);
+        
+        // For hold bookings, passenger details can be temporary
+        if ($request->action === 'hold') {
+            // Set default temporary values for hold bookings
+            $passengerName = $request->passenger_name ?: 'Temporary Booking';
+            $passengerPhone = $request->passenger_phone ?: 'TBD';
+        } else {
+            // For payment bookings, require passenger details
+            $request->validate([
+                'passenger_name' => 'required|string|max:255',
+                'passenger_phone' => 'required|string|max:20',
+            ]);
+            $passengerName = $request->passenger_name;
+            $passengerPhone = $request->passenger_phone;
+        }
 
         // Check if trip is still available
         if ($trip->status !== 'active' || $trip->departure_datetime <= now()) {
@@ -90,18 +112,18 @@ class BookingController extends Controller
             // Calculate total amount
             $totalAmount = $trip->price * $seats->count();
 
-            // Create booking with expiry time (15 minutes from now)
+            // Create booking with expiry time (2 hours from now)
             $booking = Booking::create([
                 'user_id' => Auth::id(),
                 'trip_id' => $trip->id,
                 'booking_reference' => $this->generateBookingReference(),
-                'passenger_name' => $request->passenger_name,
-                'passenger_phone' => $request->passenger_phone,
+                'passenger_name' => $passengerName,
+                'passenger_phone' => $passengerPhone,
                 'passenger_email' => $request->passenger_email,
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
                 'payment_status' => 'pending',
-                'expires_at' => now()->addMinutes(15),
+                'expires_at' => now()->addHours(2),
             ]);
 
             // Create booking seats
@@ -115,17 +137,34 @@ class BookingController extends Controller
 
             DB::commit();
 
-            // For testing purposes, return JSON if request expects JSON
-            if (request()->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'booking' => $booking,
-                    'message' => 'Booking created successfully.'
-                ]);
+            // Handle different actions
+            if ($request->action === 'hold') {
+                // For hold bookings, redirect to booking details page
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'booking' => $booking,
+                        'message' => 'Seats reserved for 2 hours. Complete your booking details.',
+                        'redirect' => route('bookings.show', $booking)
+                    ]);
+                }
+                
+                return redirect()->route('bookings.show', $booking)
+                               ->with('success', 'Seats reserved for 2 hours! Complete your booking details.');
+            } else {
+                // For payment action, redirect to payment page
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'booking' => $booking,
+                        'message' => 'Booking created successfully.',
+                        'redirect' => route('bookings.payment', $booking)
+                    ]);
+                }
+                
+                return redirect()->route('bookings.payment', $booking)
+                               ->with('success', 'Booking created successfully. Please proceed with payment.');
             }
-
-            return redirect()->route('bookings.payment', $booking)
-                           ->with('success', 'Booking created successfully. Please proceed with payment.');
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -248,6 +287,34 @@ class BookingController extends Controller
             DB::rollback();
             return back()->withErrors(['error' => 'Failed to cancel booking. Please try again.']);
         }
+    }
+
+    /**
+     * Update passenger details for a booking
+     */
+    public function updatePassenger(Request $request, Booking $booking)
+    {
+        $this->authorize('view', $booking);
+
+        // Only allow updating if booking is still pending and not expired
+        if ($booking->status !== 'pending' || $booking->isExpired()) {
+            return back()->withErrors(['error' => 'This booking cannot be modified.']);
+        }
+
+        $request->validate([
+            'passenger_name' => 'required|string|max:255',
+            'passenger_phone' => 'required|string|max:20',
+            'passenger_email' => 'nullable|email|max:255',
+        ]);
+
+        $booking->update([
+            'passenger_name' => $request->passenger_name,
+            'passenger_phone' => $request->passenger_phone,
+            'passenger_email' => $request->passenger_email,
+        ]);
+
+        return redirect()->route('bookings.show', $booking)
+                        ->with('success', 'Passenger details updated successfully.');
     }
 
     /**

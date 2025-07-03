@@ -25,6 +25,26 @@ class PublicController extends Controller
     }
 
     /**
+     * Display operator details
+     */
+    public function showOperator(Operator $operator)
+    {
+        // Check if operator is verified and user is active
+        if (!$operator->verified || $operator->user->status !== 'active') {
+            abort(404, 'Operator not found');
+        }
+
+        $operator->load(['user', 'buses.trips' => function($query) {
+            $query->with(['route.fromCity', 'route.toCity'])
+                  ->where('departure_datetime', '>=', now())
+                  ->where('status', 'active')
+                  ->orderBy('departure_datetime');
+        }]);
+
+        return view('public.operators.show', compact('operator'));
+    }
+
+    /**
      * Display buses for a specific operator
      */
     public function operatorBuses(Operator $operator)

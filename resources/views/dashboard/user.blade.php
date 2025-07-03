@@ -6,6 +6,7 @@
         $q->where('departure_datetime', '>', now());
     })->take(3)->get();
     $recentBookings = $userBookings->take(5)->get();
+    $operators = \App\Models\Operator::latest()->take(4)->get();
 @endphp
 
 <!-- Quick Stats -->
@@ -326,6 +327,31 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Featured Operators -->
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Featured Operators</h3>
+    </div>
+    <div class="p-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            @foreach($operators as $operator)
+                <a href="{{ route('operators.show', $operator) }}" class="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150 ease-in-out">
+                    <img src="{{ $operator->logo_url }}" alt="{{ $operator->company_name }}" class="h-16 w-16 mx-auto mb-3 rounded-full object-cover">
+                    <div class="text-center">
+                        <div class="font-medium text-gray-900">{{ $operator->company_name }}</div>
+                        <div class="text-sm text-gray-600">{{ $operator->buses->count() }} Buses</div>
+                    </div>
+                </a>
+            @endforeach
+        </div>
+        <div class="mt-6 text-center">
+            <a href="{{ route('operators.index') }}" class="text-blue-600 hover:text-blue-900 font-medium">
+                View All Operators &rarr;
+            </a>
         </div>
     </div>
 </div>

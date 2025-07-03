@@ -36,44 +36,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="bg-gray-100 font-sans antialiased">
-        <!-- Header -->
-        <header class="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-20">
-                    <div class="flex items-center">
-                        <h1 class="text-3xl font-extrabold text-blue-700 tracking-tight">BooknGo</h1>
-                        <span class="ml-3 text-base text-gray-600 font-medium hidden md:block">Festival Bus Booking</span>
-                    </div>
-                    @if (Route::has('login'))
-                        <nav class="flex items-center space-x-4">
-                            @auth
-                                <a
-                                    href="{{ url('/dashboard') }}"
-                                    class="inline-flex items-center px-5 py-2 border border-transparent text-base font-medium rounded-full text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out shadow-md hover:shadow-lg"
-                                >
-                                    Dashboard
-                                </a>
-                            @else
-                                <a
-                                    href="{{ route('login') }}"
-                                    class="text-gray-600 hover:text-blue-700 px-4 py-2 rounded-full text-base font-medium transition duration-200 ease-in-out"
-                                >
-                                    Log in
-                                </a>
-                                @if (Route::has('register'))
-                                    <a
-                                        href="{{ route('register') }}"
-                                        class="inline-flex items-center px-5 py-2 border border-transparent text-base font-medium rounded-full text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out shadow-md hover:shadow-lg"
-                                    >
-                                        Register
-                                    </a>
-                                @endif
-                            @endauth
-                        </nav>
-                    @endif
-                </div>
-            </div>
-        </header>
+        <!-- Modern Navbar -->
+        @include('components.modern-navbar')
 
         <!-- Hero Section -->
         <div class="relative bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 overflow-hidden py-24 md:py-32">

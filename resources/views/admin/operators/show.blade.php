@@ -16,8 +16,8 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased">
     <div class="min-h-screen">
-        <!-- Navigation -->
-        @include('layouts.navigation')
+        <!-- Modern Navbar -->
+        @include('components.modern-navbar')
 
         <!-- Page Header -->
         <header class="bg-white shadow">

@@ -39,7 +39,12 @@ class Seat extends Model
         return !$this->bookingSeats()
             ->whereHas('booking', function ($query) use ($tripId) {
                 $query->where('trip_id', $tripId)
-                      ->where('status', 'booked');
+                      ->whereIn('status', ['pending', 'booked'])
+                      ->where(function ($q) {
+                          // Include bookings that haven't expired or are already booked
+                          $q->where('expires_at', '>', now())
+                            ->orWhere('status', 'booked');
+                      });
             })->exists();
     }
 }

@@ -69,7 +69,24 @@
         </div>
 
         <!-- Main Content -->
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" 
+             x-data="{ 
+                expiresAt: new Date('{{ $booking->expires_at }}').getTime(),
+                now: Date.now(),
+                remainingTime: '',
+                updateRemainingTime() {
+                    const diff = this.expiresAt - Date.now();
+                    if (diff <= 0) {
+                        this.remainingTime = 'EXPIRED';
+                        return;
+                    }
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    this.remainingTime = hours + 'h ' + minutes + 'm ' + seconds + 's';
+                }
+             }" 
+             x-init="updateRemainingTime(); setInterval(() => updateRemainingTime(), 1000)">
             @if ($errors->any())
                 <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                     <div class="flex">
@@ -91,6 +108,26 @@
                     </div>
                 </div>
             @endif
+
+            <!-- Expiry Warning -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-yellow-800">
+                            Complete payment within 2 hours
+                        </h3>
+                        <div class="mt-1 text-sm text-yellow-700">
+                            <p>Your booking will expire in <span x-text="remainingTime" class="font-medium"></span> if payment is not completed.</p>
+                            <p class="mt-1">Expires at: {{ $booking->expires_at->format('M j, Y • H:i') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Payment Form -->
@@ -134,6 +171,20 @@
                                             <div class="ml-3">
                                                 <p class="text-sm font-medium text-gray-900">Khalti Digital Wallet</p>
                                                 <p class="text-xs text-gray-500">Pay with Khalti mobile banking</p>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <!-- Stripe -->
+                                    <label class="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150">
+                                        <input type="radio" name="payment_method" value="Stripe" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" required>
+                                        <div class="ml-4 flex items-center">
+                                            <div class="w-12 h-8 bg-blue-600 rounded flex items-center justify-center text-white text-xs font-bold">
+                                                Stripe
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-sm font-medium text-gray-900">Credit/Debit Card</p>
+                                                <p class="text-xs text-gray-500">Pay securely with your card via Stripe</p>
                                             </div>
                                         </div>
                                     </label>

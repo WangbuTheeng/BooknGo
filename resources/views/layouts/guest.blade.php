@@ -12,9 +12,24 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/notifications.js'])
+        
+        <!-- Flash message meta tags for notifications -->
+        @if(session('success'))
+            <meta name="flash-success" content="{{ session('success') }}">
+        @endif
+        @if(session('error'))
+            <meta name="flash-error" content="{{ session('error') }}">
+        @endif
+        @if(session('info'))
+            <meta name="flash-info" content="{{ session('info') }}">
+        @endif
+        @if(session('warning'))
+            <meta name="flash-warning" content="{{ session('warning') }}">
+        @endif
     </head>
     <body class="font-sans text-gray-900 antialiased">
+        @include('components.modern-navbar')
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
             <div>
                 <a href="/">
