@@ -41,8 +41,8 @@
                     <div class="flex items-center justify-between">
                         <h2 class="text-xl font-semibold text-gray-900">{{ $booking->booking_reference }}</h2>
                         <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $booking->status === 'booked' ? 'bg-green-100 text-green-800' : ($booking->status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') }}">
-                                @if($booking->status === 'booked')
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $booking->status === 'bought' ? 'bg-blue-100 text-blue-800' : ($booking->status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') }}">
+                                @if($booking->status === 'bought')
                                     <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                     </svg>
@@ -87,7 +87,7 @@
                                         Payment Required
                                     </h3>
                                     <div class="mt-2 text-sm text-yellow-700">
-                                        <p>This booking will expire {{ $booking->remaining_time }}. Please complete payment to confirm your booking.</p>
+                                        <p>This booking will expire 1 hour from now. Please complete payment to confirm your booking.</p>
                                         <div class="mt-2">
                                             <span class="font-medium">Time remaining: </span>
                                             <span id="countdown" class="font-mono text-red-600">{{ $booking->remaining_minutes }} minutes</span>
@@ -211,7 +211,11 @@
                                     <!-- Display Mode -->
                                     <div x-show="!editingPassenger" class="space-y-3">
                                         <div class="flex items-center justify-between">
-                                            <span class="text-sm font-medium text-gray-500">Name</span>
+                                            <span class="text-sm font-medium text-gray-500">Booked by</span>
+                                            <span class="text-sm text-gray-900 font-semibold">{{ $booking->user->name }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-medium text-gray-500">Passenger Name</span>
                                             <span class="text-sm text-gray-900 font-semibold">{{ $booking->passenger_name }}</span>
                                         </div>
                                         <div class="flex items-center justify-between">

@@ -36,15 +36,22 @@ return [
     ],
 
     'esewa' => [
-        'merchant_id' => env('ESEWA_MERCHANT_ID', 'EPAYTEST'),
-        'secret_key' => env('ESEWA_SECRET_KEY', '8gBm/:&EnhH.1/q'),
-        'base_url' => env('ESEWA_BASE_URL', 'https://rc-epay.esewa.com.np'),
+        'merchant_id' => env('ESEWA_MERCHANT_ID'),
+        'secret_key' => env('ESEWA_SECRET_KEY'),
+        'base_url' => env('ESEWA_BASE_URL'),
     ],
 
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'khalti' => [
+        'public_key' => env('KHALTI_PUBLIC_KEY'),
+        'secret_key' => env('KHALTI_SECRET_KEY'),
+        'base_url' => env('KHALTI_BASE_URL'),
+        'website_url' => env('KHALTI_WEBSITE_URL'),
     ],
 
 ];

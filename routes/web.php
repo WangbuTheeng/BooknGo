@@ -8,6 +8,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\OperatorController;
+use App\Http\Controllers\OperatorBookingController;
 use App\Http\Controllers\PublicController;
 use App\Models\City;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::get('bookings/{booking}/confirmation', [BookingController::class, 'confirmation'])->name('bookings.confirmation');
     Route::post('bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::patch('bookings/{booking}/passenger', [BookingController::class, 'updatePassenger'])->name('bookings.update-passenger');
+    Route::get('bookings/history/tickets', [BookingController::class, 'ticketHistory'])->name('bookings.ticket-history');
 
     // Payment routes
     Route::resource('payments', PaymentController::class)->only(['index', 'show']);
@@ -76,8 +78,24 @@ Route::middleware('auth')->group(function () {
     Route::get('payments/stripe/success', [PaymentController::class, 'stripeSuccess'])->name('payments.stripe.success');
     Route::get('payments/stripe/failure', [PaymentController::class, 'stripeFailure'])->name('payments.stripe.failure');
 
+    // Khalti payment callback
+    Route::get('payments/khalti/callback', [PaymentController::class, 'khaltiCallback'])->name('payments.khalti.callback');
+
     // Operator routes
     Route::resource('operators', OperatorController::class);
+    
+    // Operator Booking Routes (Counter Sales)
+    Route::middleware('operator')->prefix('operator')->name('operator.')->group(function () {
+        Route::get('/booking', [OperatorBookingController::class, 'index'])->name('booking.index');
+        Route::get('/booking/customers', [OperatorBookingController::class, 'customerBookings'])->name('booking.customer-bookings');
+        Route::get('/booking/trip/{trip}', [OperatorBookingController::class, 'create'])->name('booking.create');
+        Route::post('/booking/trip/{trip}', [OperatorBookingController::class, 'store'])->name('booking.store');
+        Route::get('/booking/{booking}', [OperatorBookingController::class, 'show'])->name('booking.show');
+        Route::get('/booking/{booking}/print', [OperatorBookingController::class, 'print'])->name('booking.print');
+        Route::get('/booking/{booking}/download', [OperatorBookingController::class, 'downloadTicket'])->name('booking.download-ticket');
+        Route::post('/booking/{booking}/confirm-payment', [OperatorBookingController::class, 'confirmPayment'])->name('booking.confirm-payment');
+        Route::get('/trip/{trip}/seat-availability', [OperatorBookingController::class, 'getSeatAvailability'])->name('trip.seat-availability');
+    });
 });
 
 // Admin routes

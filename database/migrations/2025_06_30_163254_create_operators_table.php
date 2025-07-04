@@ -11,17 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('operators', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('company_name', 150);
-            $table->string('license_number', 100)->nullable();
-            $table->json('contact_info')->nullable();
-            $table->text('address')->nullable();
-            $table->string('logo_url')->nullable();
-            $table->boolean('verified')->default(false);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('operators')) {
+            Schema::create('operators', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained()->onDelete('cascade');
+                $table->string('company_name', 150);
+                $table->string('license_number', 100)->nullable();
+                $table->json('contact_info')->nullable();
+                $table->text('address')->nullable();
+                $table->string('logo_url')->nullable();
+                $table->boolean('verified')->default(false);
+                $table->timestamps();
+            });
+        }
     }
 
     /**

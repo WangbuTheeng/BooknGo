@@ -11,18 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('promotions', function (Blueprint $table) {
-            $table->id();
-            $table->string('promo_code', 50)->unique();
-            $table->foreignId('operator_id')->nullable()->constrained()->onDelete('set null');
-            $table->decimal('discount_percent', 5, 2);
-            $table->decimal('min_amount', 10, 2)->nullable();
-            $table->unsignedInteger('max_uses')->nullable();
-            $table->unsignedInteger('user_limit')->nullable();
-            $table->date('valid_from')->nullable();
-            $table->date('valid_till')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('promotions')) {
+            Schema::create('promotions', function (Blueprint $table) {
+                $table->id();
+                $table->string('promo_code', 50)->unique();
+                $table->foreignId('operator_id')->nullable()->constrained()->onDelete('set null');
+                $table->decimal('discount_percent', 5, 2);
+                $table->decimal('min_amount', 10, 2)->nullable();
+                $table->unsignedInteger('max_uses')->nullable();
+                $table->unsignedInteger('user_limit')->nullable();
+                $table->date('valid_from')->nullable();
+                $table->date('valid_till')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**

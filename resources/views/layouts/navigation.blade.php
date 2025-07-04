@@ -25,13 +25,21 @@
                         </x-nav-link>
                     @endif
 
-                    <x-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
-                        @if(Auth::user()->isUser())
+                    @if(Auth::user()->isOperator())
+                        <x-nav-link :href="route('operator.booking.index')" :active="request()->routeIs('operator.booking.*')">
+                            {{ __('Counter Booking') }}
+                        </x-nav-link>
+                    @endif
+
+                    @if(Auth::user()->isUser())
+                        <x-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
                             {{ __('My Bookings') }}
-                        @else
+                        </x-nav-link>
+                    @else
+                        <x-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
                             {{ __('Bookings') }}
-                        @endif
-                    </x-nav-link>
+                        </x-nav-link>
+                    @endif
 
                     <x-nav-link :href="url('/')" :active="request()->is('/')">
                         {{ __('Search Trips') }}
@@ -116,13 +124,21 @@
                 </x-responsive-nav-link>
             @endif
 
-            <x-responsive-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
-                @if(Auth::user()->isUser())
+            @if(Auth::user()->isOperator())
+                <x-responsive-nav-link :href="route('operator.booking.index')" :active="request()->routeIs('operator.booking.*')">
+                    {{ __('Counter Booking') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if(Auth::user()->isUser())
+                <x-responsive-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
                     {{ __('My Bookings') }}
-                @else
+                </x-responsive-nav-link>
+            @else
+                <x-responsive-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
                     {{ __('Bookings') }}
-                @endif
-            </x-responsive-nav-link>
+                </x-responsive-nav-link>
+            @endif
 
             <x-responsive-nav-link :href="url('/')" :active="request()->is('/')">
                 {{ __('Search Trips') }}

@@ -11,17 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('buses', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('operator_id')->constrained()->onDelete('cascade');
-            $table->string('registration_number', 50)->unique();
-            $table->string('name', 100)->nullable();
-            $table->enum('type', ['AC', 'Deluxe', 'Normal', 'Sleeper'])->default('Normal');
-            $table->unsignedSmallInteger('total_seats')->nullable();
-            $table->json('layout_config')->nullable();
-            $table->json('features')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('buses')) {
+            Schema::create('buses', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('operator_id')->constrained()->onDelete('cascade');
+                $table->string('registration_number', 50)->unique();
+                $table->string('name', 100)->nullable();
+                $table->enum('type', ['AC', 'Deluxe', 'Normal', 'Sleeper'])->default('Normal');
+                $table->unsignedSmallInteger('total_seats')->nullable();
+                $table->json('layout_config')->nullable();
+                $table->json('features')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**

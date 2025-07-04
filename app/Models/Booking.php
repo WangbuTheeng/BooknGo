@@ -23,6 +23,8 @@ class Booking extends Model
         'payment_status',
         'cancellation_reason',
         'expires_at',
+        'booking_type',
+        'notes',
     ];
 
     protected $casts = [

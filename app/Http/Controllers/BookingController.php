@@ -123,7 +123,7 @@ class BookingController extends Controller
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
                 'payment_status' => 'pending',
-                'expires_at' => now()->addHours(2),
+                'expires_at' => now()->addHours(2), // Set expiry to 2 hours
             ]);
 
             // Create booking seats
@@ -315,6 +315,57 @@ class BookingController extends Controller
 
         return redirect()->route('bookings.show', $booking)
                         ->with('success', 'Passenger details updated successfully.');
+    }
+
+    /**
+     * Get user's recent bookings for ticket history
+     */
+    public function ticketHistory(Request $request)
+    {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please log in to view your ticket history.'
+            ], 401);
+        }
+
+        $user = Auth::user();
+        $limit = $request->get('limit', 5);
+        
+        $recentBookings = $user->bookings()
+            ->with([
+                'trip.route.fromCity',
+                'trip.route.toCity',
+                'trip.bus.operator.user',
+                'bookingSeats.seat'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'bookings' => $recentBookings->map(function ($booking) {
+                    return [
+                        'id' => $booking->id,
+                        'booking_reference' => $booking->booking_reference,
+                        'route' => $booking->trip->route->fromCity->name . ' → ' . $booking->trip->route->toCity->name,
+                        'departure_date' => $booking->trip->departure_datetime->format('M d, Y'),
+                        'departure_time' => $booking->trip->departure_datetime->format('H:i'),
+                        'passenger_name' => $booking->passenger_name,
+                        'seats' => $booking->bookingSeats->pluck('seat.seat_number')->join(', '),
+                        'total_amount' => $booking->total_amount,
+                        'status' => $booking->status,
+                        'payment_status' => $booking->payment_status,
+                        'created_at' => $booking->created_at->format('M d, Y H:i'),
+                        'url' => route('bookings.show', $booking)
+                    ];
+                })
+            ]);
+        }
+
+        return view('bookings.ticket-history', compact('recentBookings'));
     }
 
     /**

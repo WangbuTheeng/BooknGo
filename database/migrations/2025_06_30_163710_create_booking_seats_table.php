@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('booking_seats', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('booking_id')->constrained()->onDelete('cascade');
-            $table->foreignId('seat_id')->constrained()->onDelete('cascade');
-            $table->string('seat_number', 10);
-            $table->timestamps();
-            
-            $table->unique(['booking_id', 'seat_id']);
-        });
+        if (!Schema::hasTable('booking_seats')) {
+            Schema::create('booking_seats', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('booking_id')->constrained()->onDelete('cascade');
+                $table->foreignId('seat_id')->constrained()->onDelete('cascade');
+                $table->string('seat_number', 10);
+                $table->timestamps();
+
+                $table->unique(['booking_id', 'seat_id']);
+            });
+        }
     }
 
     /**

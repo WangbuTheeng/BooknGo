@@ -11,17 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('trips', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('bus_id')->constrained()->onDelete('cascade');
-            $table->foreignId('route_id')->constrained()->onDelete('cascade');
-            $table->datetime('departure_datetime');
-            $table->datetime('arrival_time')->nullable();
-            $table->decimal('price', 10, 2);
-            $table->boolean('is_festival_fare')->default(false);
-            $table->enum('status', ['active', 'cancelled'])->default('active');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('trips')) {
+            Schema::create('trips', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('bus_id')->constrained()->onDelete('cascade');
+                $table->foreignId('route_id')->constrained()->onDelete('cascade');
+                $table->datetime('departure_datetime');
+                $table->datetime('arrival_time')->nullable();
+                $table->decimal('price', 10, 2);
+                $table->boolean('is_festival_fare')->default(false);
+                $table->enum('status', ['active', 'cancelled'])->default('active');
+                $table->timestamps();
+            });
+        }
     }
 
     /**

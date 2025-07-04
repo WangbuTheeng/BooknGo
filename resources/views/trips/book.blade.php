@@ -82,7 +82,10 @@
         </div>
 
         <!-- Main Content -->
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Main Booking Form -->
+                <div class="lg:col-span-3">
             @if ($errors->any())
                 <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                     <div class="flex">
@@ -245,6 +248,49 @@
                         </button>
                     </div>
                 </form>
+                </div>
+                
+                <!-- Sidebar with Quick Access -->
+                <div class="lg:col-span-1">
+                    @auth
+                        <!-- Ticket History Section -->
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Access</h3>
+                            
+                            <!-- My Bookings Link -->
+                            <div class="space-y-3">
+                                <a href="{{ route('bookings.index') }}" 
+                                   class="block w-full text-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
+                                    View All My Bookings
+                                </a>
+                                
+                                <!-- Ticket History Modal Button -->
+                                @include('components.ticket-history-modal')
+                            </div>
+                        </div>
+                        
+                        <!-- Travel Tips -->
+                        <div class="bg-blue-50 rounded-lg border border-blue-200 p-6">
+                            <h4 class="text-sm font-medium text-blue-900 mb-3">💡 Travel Tips</h4>
+                            <ul class="text-blue-800 text-sm space-y-2">
+                                <li>• Arrive 30 minutes early</li>
+                                <li>• Carry valid ID proof</li>
+                                <li>• Save your booking reference</li>
+                                <li>• Check cancellation policy</li>
+                            </ul>
+                        </div>
+                    @else
+                        <!-- Login Prompt -->
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Have an Account?</h3>
+                            <p class="text-gray-600 text-sm mb-4">Log in to view your booking history and manage your trips.</p>
+                            <a href="{{ route('login') }}" 
+                               class="block w-full text-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition duration-150">
+                                Log In
+                            </a>
+                        </div>
+                    @endauth
+                </div>
             </div>
         </div>
 

@@ -190,6 +190,7 @@
                                     </label>
 
                                     <!-- Cash Payment -->
+                                    @if(auth()->check() && auth()->user()->isOperator())
                                     <label class="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150">
                                         <input type="radio" name="payment_method" value="Cash" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" required>
                                         <div class="ml-4 flex items-center">
@@ -202,6 +203,7 @@
                                             </div>
                                         </div>
                                     </label>
+                                    @endif
                                 </div>
                             </div>
 

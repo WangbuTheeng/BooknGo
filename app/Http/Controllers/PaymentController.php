@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\Booking;
 use App\Services\ESewaService;
 use App\Services\StripeService;
+use App\Services\KhaltiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -69,13 +70,12 @@ class PaymentController extends Controller
                 'method' => $request->payment_method,
                 'amount' => $request->amount,
                 'transaction_id' => $this->generateTransactionId(),
-                'payment_status' => $request->payment_method === 'Cash' ? 'pending' : 'pending',
+                'payment_status' => 'pending',
             ]);
 
             // For cash payments, mark as pending (to be confirmed by operator)
             if ($request->payment_method === 'Cash') {
-                // Keep booking status as 'booked' since that's the only valid confirmed status
-                $payment->update(['payment_status' => 'pending']);
+                $booking->update(['status' => 'booked']);
 
                 DB::commit();
 
@@ -107,12 +107,12 @@ class PaymentController extends Controller
             
             try {
                 $payment->update([
-                    'status' => 'completed',
+                    'payment_status' => 'success',
                     'gateway_transaction_id' => $request->get('transaction_id'),
                     'gateway_response' => json_encode($request->all()),
                 ]);
 
-                $payment->booking->update(['status' => 'confirmed']);
+                $payment->booking->update(['payment_status' => 'paid', 'status' => 'bought']);
 
                 DB::commit();
 
@@ -127,7 +127,7 @@ class PaymentController extends Controller
         }
 
         // Payment failed
-        $payment->update(['status' => 'failed']);
+        $payment->update(['payment_status' => 'failed']);
         
         return redirect()->route('bookings.payment', $payment->booking)
                        ->withErrors(['error' => 'Payment failed. Please try again.']);
@@ -156,11 +156,11 @@ class PaymentController extends Controller
             abort(403, 'Unauthorized access');
         }
 
-        if ($payment->payment_method !== 'cash' || $payment->status !== 'pending') {
+        if ($payment->method !== 'Cash' || $payment->payment_status !== 'pending') {
             return back()->withErrors(['error' => 'This payment cannot be confirmed.']);
         }
 
-        $payment->update(['status' => 'completed']);
+        $payment->update(['payment_status' => 'success']);
 
         return back()->with('success', 'Cash payment confirmed successfully.');
     }
@@ -199,8 +199,14 @@ class PaymentController extends Controller
                 return back()->withErrors(['error' => 'Failed to initialize Stripe payment: ' . $e->getMessage()]);
             }
         } elseif ($method === 'Khalti') {
-            // Khalti integration would go here
-            return view('payments.khalti', compact('payment'));
+            $khaltiService = new KhaltiService();
+            $result = $khaltiService->initiatePayment($payment->booking, $payment);
+            
+            if ($result['status'] === 'success') {
+                return view('payments.khalti', compact('payment', 'result'));
+            } else {
+                return back()->withErrors(['error' => 'Failed to initialize Khalti payment: ' . $result['message']]);
+            }
         }
 
         return back()->withErrors(['error' => 'Payment method not supported yet.']);
@@ -268,6 +274,29 @@ class PaymentController extends Controller
 
         $stripeService = new StripeService();
         $result = $stripeService->handleFailedPayment($request->payment_intent, $request->error);
+
+        return redirect()->route('bookings.index')
+                       ->withErrors(['error' => $result['message']]);
+    }
+
+    /**
+     * Handle Khalti payment callback
+     */
+    public function khaltiCallback(Request $request)
+    {
+        $khaltiService = new KhaltiService();
+        
+        // Check if payment was successful
+        if ($request->get('status') === 'Completed') {
+            $result = $khaltiService->handleSuccessCallback($request);
+            
+            if ($result['status'] === 'success') {
+                return redirect()->route('bookings.show', $result['payment']->booking)
+                               ->with('success', 'Payment completed successfully!');
+            }
+        } else {
+            $result = $khaltiService->handleFailureCallback($request);
+        }
 
         return redirect()->route('bookings.index')
                        ->withErrors(['error' => $result['message']]);

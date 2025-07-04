@@ -174,15 +174,16 @@ class ESewaService
         if ($status === 'COMPLETE') {
             // Update payment status
             $payment->update([
-                'status' => 'success',
+                'payment_status' => 'success',
                 'gateway_transaction_id' => $transactionCode,
                 'gateway_response' => json_encode($decodedData),
                 'paid_at' => now(),
             ]);
 
-            // Update booking payment status
+            // Update booking payment status and main status
             $payment->booking->update([
-                'payment_status' => 'paid'
+                'payment_status' => 'paid',
+                'status' => 'bought',
             ]);
 
             return [

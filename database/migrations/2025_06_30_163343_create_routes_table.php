@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('routes', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('from_city_id')->constrained('cities');
-            $table->foreignId('to_city_id')->constrained('cities');
-            $table->decimal('estimated_km', 8, 2)->nullable();
-            $table->time('estimated_time')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('routes')) {
+            Schema::create('routes', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('from_city_id')->constrained('cities');
+                $table->foreignId('to_city_id')->constrained('cities');
+                $table->decimal('estimated_km', 8, 2)->nullable();
+                $table->time('estimated_time')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
