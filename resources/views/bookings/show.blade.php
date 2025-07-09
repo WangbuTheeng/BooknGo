@@ -149,7 +149,7 @@
                                     </div>
                                     <div class="flex items-center justify-between">
                                         <span class="text-sm font-medium text-gray-500">Bus</span>
-                                        <span class="text-sm text-gray-900">{{ $booking->trip->bus->name }}</span>
+                                        <span class="text-sm text-gray-900">{{ $booking->trip->bus->name }} ({{ $booking->trip->bus->registration_number }})</span>
                                     </div>
                                     <div class="flex items-center justify-between">
                                         <span class="text-sm font-medium text-gray-500">Type</span>

@@ -41,6 +41,14 @@ class Operator extends Model
     }
 
     /**
+     * Get all routes for this operator
+     */
+    public function routes()
+    {
+        return $this->hasMany(Route::class);
+    }
+
+    /**
      * Get all promotions created by this operator
      */
     public function promotions()

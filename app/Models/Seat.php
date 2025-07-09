@@ -13,6 +13,13 @@ class Seat extends Model
         'bus_id',
         'seat_number',
         'position',
+        'seat_type',
+        'row_number',
+        'column_number',
+        'side',
+        'is_available_for_booking',
+        'price_multiplier',
+        'properties',
     ];
 
     /**
@@ -23,12 +30,86 @@ class Seat extends Model
         return $this->belongsTo(Bus::class);
     }
 
+    protected $casts = [
+        'properties' => 'array',
+        'is_available_for_booking' => 'boolean',
+        'price_multiplier' => 'decimal:2',
+    ];
+
     /**
      * Get all booking seats for this seat
      */
     public function bookingSeats()
     {
         return $this->hasMany(BookingSeat::class);
+    }
+
+    /**
+     * Check if seat is available for booking
+     */
+    public function isAvailableForBooking()
+    {
+        return $this->is_available_for_booking &&
+               in_array($this->seat_type, ['passenger', 'vip']);
+    }
+
+    /**
+     * Check if seat is a special type
+     */
+    public function isSpecialSeat()
+    {
+        return in_array($this->seat_type, ['vip', 'blocked', 'conductor', 'driver']);
+    }
+
+    /**
+     * Get seat display name
+     */
+    public function getDisplayName()
+    {
+        $name = $this->seat_number;
+
+        if ($this->seat_type === 'vip') {
+            $name .= ' (VIP)';
+        } elseif ($this->seat_type === 'blocked') {
+            $name .= ' (Blocked)';
+        } elseif ($this->seat_type === 'conductor') {
+            $name .= ' (Conductor)';
+        } elseif ($this->seat_type === 'driver') {
+            $name .= ' (Driver)';
+        }
+
+        return $name;
+    }
+
+    /**
+     * Get seat CSS classes for styling
+     */
+    public function getCssClasses()
+    {
+        $classes = ['seat'];
+
+        switch ($this->seat_type) {
+            case 'vip':
+                $classes[] = 'seat-vip';
+                break;
+            case 'blocked':
+                $classes[] = 'seat-blocked';
+                break;
+            case 'conductor':
+                $classes[] = 'seat-conductor';
+                break;
+            case 'driver':
+                $classes[] = 'seat-driver';
+                break;
+            default:
+                $classes[] = 'seat-passenger';
+        }
+
+        if (!$this->is_available_for_booking) {
+            $classes[] = 'seat-unavailable';
+        }
+
+        return implode(' ', $classes);
     }
 
     /**

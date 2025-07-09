@@ -97,6 +97,24 @@
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
+
+                            <!-- Bus Number -->
+                            <div>
+                                <label for="bus_number" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Bus Number (Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    id="bus_number"
+                                    name="bus_number"
+                                    value="{{ old('bus_number', isset($bus) ? $bus->bus_number : '') }}"
+                                    placeholder="e.g., 123"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('bus_number') border-red-300 @enderror"
+                                >
+                                @error('bus_number')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
 

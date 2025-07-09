@@ -17,11 +17,14 @@
                     </x-nav-link>
 
                     @if(Auth::user()->isOperator() || Auth::user()->isAdmin())
-                        <x-nav-link :href="route('trips.index')" :active="request()->routeIs('trips.*')">
-                            {{ __('Trips') }}
+                        <x-nav-link :href="route('operator.trips.index')" :active="request()->routeIs('operator.trips.*')">
+                            {{ __('My Trips') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('buses.index')" :active="request()->routeIs('buses.*')">
-                            {{ __('Buses') }}
+                        <x-nav-link :href="route('operator.buses.index')" :active="request()->routeIs('operator.buses.*')">
+                            {{ __('My Buses') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('operator.routes.index')" :active="request()->routeIs('operator.routes.*')">
+                            {{ __('My Routes') }}
                         </x-nav-link>
                     @endif
 
@@ -116,11 +119,14 @@
             </x-responsive-nav-link>
 
             @if(Auth::user()->isOperator() || Auth::user()->isAdmin())
-                <x-responsive-nav-link :href="route('trips.index')" :active="request()->routeIs('trips.*')">
-                    {{ __('Trips') }}
+                <x-responsive-nav-link :href="route('operator.trips.index')" :active="request()->routeIs('operator.trips.*')">
+                    {{ __('My Trips') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('buses.index')" :active="request()->routeIs('buses.*')">
-                    {{ __('Buses') }}
+                <x-responsive-nav-link :href="route('operator.buses.index')" :active="request()->routeIs('operator.buses.*')">
+                    {{ __('My Buses') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('operator.routes.index')" :active="request()->routeIs('operator.routes.*')">
+                    {{ __('My Routes') }}
                 </x-responsive-nav-link>
             @endif
 

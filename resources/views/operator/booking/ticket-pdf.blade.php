@@ -203,6 +203,10 @@
                     <td class="info-label">Bus:</td>
                     <td class="info-value">{{ $booking->trip->bus->name ?: $booking->trip->bus->registration_number }}</td>
                 </tr>
+                <tr>
+                    <td class="info-label">Bus Number:</td>
+                    <td class="info-value">{{ $booking->trip->bus->bus_number }}</td>
+                </tr>
             </table>
         </div>
 
@@ -294,7 +298,8 @@
                     <td style="width: 34%;">
                         <strong>Journey:</strong><br>
                         {{ $booking->trip->route->fromCity->name }} → {{ $booking->trip->route->toCity->name }}<br>
-                        {{ $booking->trip->departure_datetime->format('M d, Y H:i') }}
+                        {{ $booking->trip->departure_datetime->format('M d, Y H:i') }}<br>
+                        Bus Number: {{ $booking->trip->bus->bus_number }}
                     </td>
                     <td style="width: 33%;">
                         <strong>Seats & Amount:</strong><br>

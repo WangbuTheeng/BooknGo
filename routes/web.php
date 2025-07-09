@@ -6,6 +6,8 @@ use App\Http\Controllers\TripController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SeatController;
+use App\Http\Controllers\SeatLayoutController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\OperatorBookingController;
@@ -25,7 +27,7 @@ Route::get('/dashboard', function () {
 // Public trip search
 Route::get('/search', [TripController::class, 'search'])->name('trips.search');
 Route::get('/trips/{trip}/seats', [TripController::class, 'selectSeats'])->name('trips.select-seats');
-Route::post('/trips/{trip}/book', [BookingController::class, 'store'])->name('trips.book.store');
+Route::post('/trips/{trip}/book', [BookingController::class, 'store'])->name('trips.book.store')->middleware('booking.limiter');
 
 // Public operators and buses routes (using browse prefix to avoid conflicts)
 Route::get('/browse/operators', [PublicController::class, 'operators'])->name('public.operators.index');
@@ -40,46 +42,53 @@ Route::middleware('auth')->group(function () {
 
     // Bus management routes
     Route::resource('buses', BusController::class);
-    Route::get('buses/{bus}/seats', [SeatController::class, 'index'])->name('buses.seats.index');
-    Route::get('buses/{bus}/seats/create', [SeatController::class, 'create'])->name('buses.seats.create');
-    Route::post('buses/{bus}/seats', [SeatController::class, 'store'])->name('buses.seats.store');
-    Route::get('buses/{bus}/seats/{seat}', [SeatController::class, 'show'])->name('buses.seats.show');
-    Route::get('buses/{bus}/seats/{seat}/edit', [SeatController::class, 'edit'])->name('buses.seats.edit');
-    Route::put('buses/{bus}/seats/{seat}', [SeatController::class, 'update'])->name('buses.seats.update');
-    Route::delete('buses/{bus}/seats/{seat}', [SeatController::class, 'destroy'])->name('buses.seats.destroy');
-    Route::get('buses/{bus}/seat-availability', [SeatController::class, 'availability'])->name('buses.seats.availability');
+
+    Route::middleware('admin')->group(function () {
+        // Seat layout configuration routes
+        Route::get('buses/{bus}/layout/configure', [SeatLayoutController::class, 'configure'])->name('buses.layout.configure');
+        Route::post('buses/{bus}/layout/store', [SeatLayoutController::class, 'store'])->name('buses.layout.store');
+        Route::get('buses/{bus}/layout/preview', [SeatLayoutController::class, 'preview'])->name('buses.layout.preview');
+        Route::post('buses/{bus}/layout/preview-data', [SeatLayoutController::class, 'getPreview'])->name('buses.layout.preview-data');
+        Route::post('buses/{bus}/layout/reset', [SeatLayoutController::class, 'reset'])->name('buses.layout.reset');
+
+        // Individual seat management routes
+        Route::get('buses/{bus}/seats', [SeatController::class, 'index'])->name('buses.seats.index');
+        Route::get('buses/{bus}/seats/create', [SeatController::class, 'create'])->name('buses.seats.create');
+        Route::post('buses/{bus}/seats', [SeatController::class, 'store'])->name('buses.seats.store');
+        Route::get('buses/{bus}/seats/{seat}', [SeatController::class, 'show'])->name('buses.seats.show');
+        Route::get('buses/{bus}/seats/{seat}/edit', [SeatController::class, 'edit'])->name('buses.seats.edit');
+        Route::put('buses/{bus}/seats/{seat}', [SeatController::class, 'update'])->name('buses.seats.update');
+        Route::delete('buses/{bus}/seats/{seat}', [SeatController::class, 'destroy'])->name('buses.seats.destroy');
+        Route::get('buses/{bus}/seat-availability', [SeatController::class, 'availability'])->name('buses.seats.availability');
+    });
 
     // Trip management routes
-    Route::resource('trips', TripController::class);
-    Route::get('trips/{trip}/seat-availability', [TripController::class, 'seatAvailability'])->name('trips.seat-availability');
-    Route::post('trips/{trip}/cancel', [TripController::class, 'cancel'])->name('trips.cancel');
+    Route::middleware('admin')->group(function () {
+        Route::resource('trips', TripController::class);
+        Route::get('trips/{trip}/seat-availability', [TripController::class, 'seatAvailability'])->name('trips.seat-availability');
+        Route::post('trips/{trip}/cancel', [TripController::class, 'cancel'])->name('trips.cancel');
+    });
 
     // Booking routes
     Route::resource('bookings', BookingController::class)->except(['edit', 'update']);
     Route::get('trips/{trip}/book', [BookingController::class, 'create'])->name('trips.book');
-    Route::post('trips/{trip}/book', [BookingController::class, 'store'])->name('trips.book.store');
+    Route::post('trips/{trip}/book', [BookingController::class, 'store'])->name('trips.book.store')->middleware('booking.limiter');
     Route::get('bookings/{booking}/payment', [BookingController::class, 'payment'])->name('bookings.payment');
     Route::get('bookings/{booking}/confirmation', [BookingController::class, 'confirmation'])->name('bookings.confirmation');
     Route::post('bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::patch('bookings/{booking}/passenger', [BookingController::class, 'updatePassenger'])->name('bookings.update-passenger');
     Route::get('bookings/history/tickets', [BookingController::class, 'ticketHistory'])->name('bookings.ticket-history');
 
+    // Ticket routes
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/{booking}/print', [TicketController::class, 'print'])->name('tickets.print');
+    Route::get('/tickets/{booking}/download', [TicketController::class, 'download'])->name('tickets.download');
+
     // Payment routes
     Route::resource('payments', PaymentController::class)->only(['index', 'show']);
     Route::post('bookings/{booking}/payment', [PaymentController::class, 'process'])->name('payments.process');
-    Route::get('payments/{payment}/callback', [PaymentController::class, 'callback'])->name('payments.callback');
+    Route::get('payments/{payment}/callback/{gateway}', [PaymentController::class, 'callback'])->name('payments.callback');
     Route::post('payments/{payment}/confirm-cash', [PaymentController::class, 'confirmCash'])->name('payments.confirm-cash');
-
-    // eSewa payment callbacks
-    Route::get('payments/esewa/success', [PaymentController::class, 'esewaSuccess'])->name('payments.esewa.success');
-    Route::get('payments/esewa/failure', [PaymentController::class, 'esewaFailure'])->name('payments.esewa.failure');
-
-    // Stripe payment callbacks
-    Route::get('payments/stripe/success', [PaymentController::class, 'stripeSuccess'])->name('payments.stripe.success');
-    Route::get('payments/stripe/failure', [PaymentController::class, 'stripeFailure'])->name('payments.stripe.failure');
-
-    // Khalti payment callback
-    Route::get('payments/khalti/callback', [PaymentController::class, 'khaltiCallback'])->name('payments.khalti.callback');
 
     // Operator routes
     Route::resource('operators', OperatorController::class);
@@ -95,6 +104,29 @@ Route::middleware('auth')->group(function () {
         Route::get('/booking/{booking}/download', [OperatorBookingController::class, 'downloadTicket'])->name('booking.download-ticket');
         Route::post('/booking/{booking}/confirm-payment', [OperatorBookingController::class, 'confirmPayment'])->name('booking.confirm-payment');
         Route::get('/trip/{trip}/seat-availability', [OperatorBookingController::class, 'getSeatAvailability'])->name('trip.seat-availability');
+    });
+
+    // Operator Bus Management
+    Route::middleware('operator')->prefix('operator')->name('operator.')->group(function () {
+        Route::get('dashboard', [\App\Http\Controllers\Operator\DashboardController::class, 'index'])->name('dashboard');
+        Route::resource('buses', \App\Http\Controllers\Operator\BusController::class);
+        Route::get('buses/{bus}/layout/configure', [\App\Http\Controllers\Operator\SeatLayoutController::class, 'configure'])->name('buses.layout.configure');
+        Route::post('buses/{bus}/layout/store', [\App\Http\Controllers\Operator\SeatLayoutController::class, 'store'])->name('buses.layout.store');
+        Route::get('buses/{bus}/layout/preview', [\App\Http\Controllers\Operator\SeatLayoutController::class, 'preview'])->name('buses.layout.preview');
+        Route::post('buses/{bus}/layout/preview-data', [\App\Http\Controllers\Operator\SeatLayoutController::class, 'getPreview'])->name('buses.layout.preview-data');
+        Route::post('buses/{bus}/layout/reset', [\App\Http\Controllers\Operator\SeatLayoutController::class, 'reset'])->name('buses.layout.reset');
+        Route::resource('routes', \App\Http\Controllers\Operator\RouteController::class);
+        Route::resource('trips', \App\Http\Controllers\Operator\TripController::class);
+
+        Route::get('trips/{trip}/seats', [\App\Http\Controllers\Operator\SeatController::class, 'index'])->name('trips.seats.index');
+        Route::get('trips/{trip}/seats/{seat}/edit', [\App\Http\Controllers\Operator\SeatController::class, 'edit'])->name('trips.seats.edit');
+        Route::put('trips/{trip}/seats/{seat}', [\App\Http\Controllers\Operator\SeatController::class, 'update'])->name('trips.seats.update');
+        Route::post('trips/{trip}/seats/block', [\App\Http\Controllers\Operator\SeatController::class, 'block'])->name('trips.seats.block');
+        Route::post('trips/{trip}/seats/unblock', [\App\Http\Controllers\Operator\SeatController::class, 'unblock'])->name('trips.seats.unblock');
+
+        Route::get('bookings', [\App\Http\Controllers\Operator\BookingController::class, 'index'])->name('bookings.index');
+        Route::get('bookings/{booking}', [\App\Http\Controllers\Operator\BookingController::class, 'show'])->name('bookings.show');
+        Route::get('trips/{trip}/manifest', [\App\Http\Controllers\Operator\BookingController::class, 'generateManifest'])->name('trips.manifest');
     });
 });
 

@@ -55,36 +55,11 @@ class BusSeeder extends Seeder
         foreach ($buses as $busData) {
             $bus = Bus::create($busData);
 
-            // Generate seats for each bus
-            $this->generateSeats($bus);
+            // The Bus model's 'created' event listener automatically generates seats.
+            // No need to call it explicitly here.
         }
     }
 
-    /**
-     * Generate seats for a bus
-     */
-    private function generateSeats(Bus $bus)
-    {
-        for ($i = 1; $i <= $bus->total_seats; $i++) {
-            Seat::create([
-                'bus_id' => $bus->id,
-                'seat_number' => (string) $i,
-                'position' => $this->calculateSeatPosition($i),
-            ]);
-        }
-    }
-
-    /**
-     * Calculate seat position based on seat number
-     */
-    private function calculateSeatPosition(int $seatNumber): string
-    {
-        // Simple logic: assume 4 seats per row (2+2 configuration)
-        $row = ceil($seatNumber / 4);
-        $position = ($seatNumber - 1) % 4;
-
-        $positions = ['WL', 'AL', 'AR', 'WR']; // Window-Left, Aisle-Left, Aisle-Right, Window-Right
-
-        return "R{$row}-{$positions[$position]}";
-    }
+    // The generateSeats and calculateSeatPosition methods are no longer needed here
+    // as the logic is handled by the Bus model.
 }

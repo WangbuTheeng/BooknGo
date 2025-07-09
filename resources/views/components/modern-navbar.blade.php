@@ -192,6 +192,11 @@
                     <a href="{{ route('public.operators.index') }}" class="text-gray-900 dark:text-white hover:underline">Operators</a>
                 </li>
                 @auth
+                    @if(Auth::user()->isUser())
+                        <li>
+                            <a href="{{ route('tickets.index') }}" class="text-gray-900 dark:text-white hover:underline">My Tickets</a>
+                        </li>
+                    @endif
                     <li>
                         <a href="{{ route('bookings.index') }}" class="text-gray-900 dark:text-white hover:underline">
                             @if(Auth::user()->isUser()) My Bookings @else Bookings @endif

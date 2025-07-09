@@ -38,7 +38,6 @@ class SeatController extends Controller
     {
         $this->authorize('update', $bus);
 
-        // Handle bulk creation
         if ($request->has('bulk_create')) {
             return $this->storeBulkSeats($request, $bus);
         }
@@ -48,19 +47,23 @@ class SeatController extends Controller
             'position' => 'nullable|string|max:50',
         ]);
 
-        // Check if seat number already exists for this bus
-        if ($bus->seats()->where('seat_number', $request->seat_number)->exists()) {
-            return back()->withErrors(['seat_number' => 'Seat number already exists for this bus.']);
+        $seat = Seat::firstOrCreate(
+            [
+                'bus_id' => $bus->id,
+                'seat_number' => $request->seat_number,
+            ],
+            [
+                'position' => $request->position,
+            ]
+        );
+
+        if ($seat->wasRecentlyCreated) {
+            return redirect()->route('buses.seats.index', $bus)
+                            ->with('success', 'Seat created successfully.');
+        } else {
+            return back()->withErrors(['seat_number' => 'Seat number already exists for this bus.'])
+                         ->withInput();
         }
-
-        Seat::create([
-            'bus_id' => $bus->id,
-            'seat_number' => $request->seat_number,
-            'position' => $request->position,
-        ]);
-
-        return redirect()->route('buses.seats.index', $bus)
-                        ->with('success', 'Seat created successfully.');
     }
 
     /**
@@ -75,26 +78,30 @@ class SeatController extends Controller
 
         $startNumber = $request->start_number;
         $endNumber = $request->end_number;
-        $createdSeats = 0;
-        $skippedSeats = [];
+        $createdCount = 0;
+        $existingCount = 0;
 
         for ($i = $startNumber; $i <= $endNumber; $i++) {
-            // Check if seat number already exists
-            if (!$bus->seats()->where('seat_number', $i)->exists()) {
-                Seat::create([
+            $seat = Seat::firstOrCreate(
+                [
                     'bus_id' => $bus->id,
-                    'seat_number' => $i,
-                    'position' => null,
-                ]);
-                $createdSeats++;
+                    'seat_number' => (string) $i,
+                ],
+                [
+                    'position' => null, // Or calculate position if needed
+                ]
+            );
+
+            if ($seat->wasRecentlyCreated) {
+                $createdCount++;
             } else {
-                $skippedSeats[] = $i;
+                $existingCount++;
             }
         }
 
-        $message = "Created {$createdSeats} seats successfully.";
-        if (!empty($skippedSeats)) {
-            $message .= " Skipped existing seats: " . implode(', ', $skippedSeats);
+        $message = "Created {$createdCount} new seats.";
+        if ($existingCount > 0) {
+            $message .= " {$existingCount} seats already existed and were not modified.";
         }
 
         return redirect()->route('buses.seats.index', $bus)

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Booking;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use App\Events\SeatStatusUpdated;
 
 class CleanupExpiredBookings extends Command
 {
@@ -48,6 +49,11 @@ class CleanupExpiredBookings extends Command
             DB::beginTransaction();
 
             try {
+                // Dispatch event for each seat
+                foreach ($booking->bookingSeats as $bookingSeat) {
+                    broadcast(new SeatStatusUpdated($booking->trip_id, $bookingSeat->seat_id, 'available'))->toOthers();
+                }
+
                 // Delete associated booking seats
                 $booking->bookingSeats()->delete();
 

@@ -5,15 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Trip;
 use App\Models\Seat;
-use App\Models\BookingSeat;
 use App\Models\Payment;
-use Illuminate\Http\Request;
+use App\Services\BookingService;
+use App\Http\Requests\StoreBookingRequest;
+use App\Http\Requests\UpdatePassengerRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use App\Events\SeatStatusUpdated;
 
 class BookingController extends Controller
 {
+    protected $bookingService;
+
+    public function __construct(BookingService $bookingService)
+    {
+        $this->bookingService = $bookingService;
+    }
+
     /**
      * Display a listing of bookings
      */
@@ -21,16 +29,13 @@ class BookingController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isAdmin()) {
-            $bookings = Booking::with(['user', 'trip.route.fromCity', 'trip.route.toCity', 'trip.bus'])
-                              ->orderBy('created_at', 'desc')
-                              ->paginate(15);
-        } else {
-            $bookings = $user->bookings()
-                            ->with(['trip.route.fromCity', 'trip.route.toCity', 'trip.bus'])
-                            ->orderBy('created_at', 'desc')
-                            ->paginate(15);
-        }
+        $query = $user->isAdmin()
+            ? Booking::query()
+            : $user->bookings();
+
+        $bookings = $query->with(['user', 'trip.route.fromCity', 'trip.route.toCity', 'trip.bus'])
+                          ->orderBy('created_at', 'desc')
+                          ->paginate(15);
 
         return view('bookings.index', compact('bookings'));
     }
@@ -40,12 +45,10 @@ class BookingController extends Controller
      */
     public function create(Trip $trip)
     {
-        // Check if trip is available for booking
         if (!$trip->isBookable()) {
             return redirect()->back()->withErrors(['error' => 'This trip is not available for booking.']);
         }
 
-        // If user is not authenticated, redirect to seat selection with a message
         if (!Auth::check()) {
             return redirect()->route('trips.select-seats', $trip)
                            ->with('info', 'Please select your seats first, then log in to complete your booking.');
@@ -59,38 +62,13 @@ class BookingController extends Controller
     /**
      * Store a newly created booking in storage
      */
-    public function store(Request $request, Trip $trip)
+    public function store(StoreBookingRequest $request, Trip $trip)
     {
-        $request->validate([
-            'passenger_name' => 'string|max:255',
-            'passenger_phone' => 'string|max:20', 
-            'passenger_email' => 'nullable|email|max:255',
-            'seat_ids' => 'required|array|min:1',
-            'seat_ids.*' => 'exists:seats,id',
-            'action' => 'nullable|in:hold,payment', // New field for action type
-        ]);
-        
-        // For hold bookings, passenger details can be temporary
-        if ($request->action === 'hold') {
-            // Set default temporary values for hold bookings
-            $passengerName = $request->passenger_name ?: 'Temporary Booking';
-            $passengerPhone = $request->passenger_phone ?: 'TBD';
-        } else {
-            // For payment bookings, require passenger details
-            $request->validate([
-                'passenger_name' => 'required|string|max:255',
-                'passenger_phone' => 'required|string|max:20',
-            ]);
-            $passengerName = $request->passenger_name;
-            $passengerPhone = $request->passenger_phone;
-        }
 
-        // Check if trip is still available
         if ($trip->status !== 'active' || $trip->departure_datetime <= now()) {
             return back()->withErrors(['error' => 'This trip is no longer available for booking.']);
         }
 
-        // Verify seat availability and ownership
         $seats = Seat::whereIn('id', $request->seat_ids)
                     ->where('bus_id', $trip->bus_id)
                     ->get();
@@ -99,81 +77,48 @@ class BookingController extends Controller
             return back()->withErrors(['error' => 'Invalid seat selection.']);
         }
 
-        // Check if any selected seats are already booked
-        foreach ($seats as $seat) {
-            if (!$seat->isAvailableForTrip($trip->id)) {
-                return back()->withErrors(['error' => "Seat {$seat->seat_number} is no longer available."]);
-            }
+        $unavailableSeats = DB::table('booking_seats')
+            ->join('bookings', 'booking_seats.booking_id', '=', 'bookings.id')
+            ->where('bookings.trip_id', $trip->id)
+            ->whereIn('booking_seats.seat_id', $request->seat_ids)
+            ->where(function ($query) {
+                $query->where('bookings.status', 'booked')
+                      ->orWhere(function ($q) {
+                          $q->where('bookings.status', 'pending')
+                            ->where('bookings.expires_at', '>', now());
+                      });
+            })
+            ->pluck('booking_seats.seat_id')
+            ->toArray();
+
+        if (!empty($unavailableSeats)) {
+            $unavailableSeatNumbers = $seats->whereIn('id', $unavailableSeats)->pluck('seat_number')->join(', ');
+            return back()->withErrors(['error' => "The following seats are no longer available: {$unavailableSeatNumbers}"]);
         }
 
-        DB::beginTransaction();
-
         try {
-            // Calculate total amount
-            $totalAmount = $trip->price * $seats->count();
+            $booking = $this->bookingService->createBooking($trip, Auth::user(), $request->all());
 
-            // Create booking with expiry time (2 hours from now)
-            $booking = Booking::create([
-                'user_id' => Auth::id(),
-                'trip_id' => $trip->id,
-                'booking_reference' => $this->generateBookingReference(),
-                'passenger_name' => $passengerName,
-                'passenger_phone' => $passengerPhone,
-                'passenger_email' => $request->passenger_email,
-                'total_amount' => $totalAmount,
-                'status' => 'pending',
-                'payment_status' => 'pending',
-                'expires_at' => now()->addHours(2), // Set expiry to 2 hours
-            ]);
+            $redirectRoute = $request->action === 'hold' ? 'bookings.show' : 'bookings.payment';
+            $message = $request->action === 'hold'
+                ? 'Seats reserved for 2 hours! Complete your booking details.'
+                : 'Booking created successfully. Please proceed with payment.';
 
-            // Create booking seats
-            foreach ($seats as $seat) {
-                BookingSeat::create([
-                    'booking_id' => $booking->id,
-                    'seat_id' => $seat->id,
-                    'seat_number' => $seat->seat_number,
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'booking' => $booking,
+                    'message' => $message,
+                    'redirect' => route($redirectRoute, $booking)
                 ]);
             }
 
-            DB::commit();
-
-            // Handle different actions
-            if ($request->action === 'hold') {
-                // For hold bookings, redirect to booking details page
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => true,
-                        'booking' => $booking,
-                        'message' => 'Seats reserved for 2 hours. Complete your booking details.',
-                        'redirect' => route('bookings.show', $booking)
-                    ]);
-                }
-                
-                return redirect()->route('bookings.show', $booking)
-                               ->with('success', 'Seats reserved for 2 hours! Complete your booking details.');
-            } else {
-                // For payment action, redirect to payment page
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => true,
-                        'booking' => $booking,
-                        'message' => 'Booking created successfully.',
-                        'redirect' => route('bookings.payment', $booking)
-                    ]);
-                }
-                
-                return redirect()->route('bookings.payment', $booking)
-                               ->with('success', 'Booking created successfully. Please proceed with payment.');
-            }
+            return redirect()->route($redirectRoute, $booking)->with('success', $message);
 
         } catch (\Exception $e) {
-            DB::rollback();
-
-            // For debugging - show actual error in test environment
             if (app()->environment('testing')) {
                 throw $e;
             }
-
             return back()->withErrors(['error' => 'Failed to create booking. Please try again.']);
         }
     }
@@ -184,9 +129,7 @@ class BookingController extends Controller
     public function show(Booking $booking)
     {
         $this->authorize('view', $booking);
-
         $booking->load(['trip.route.fromCity', 'trip.route.toCity', 'trip.bus', 'bookingSeats.seat', 'payments']);
-
         return view('bookings.show', compact('booking'));
     }
 
@@ -196,14 +139,12 @@ class BookingController extends Controller
     public function confirmation(Booking $booking)
     {
         $this->authorize('view', $booking);
-
         $booking->load([
             'trip.route.fromCity',
             'trip.route.toCity',
             'trip.bus.operator.user',
             'bookingSeats.seat'
         ]);
-
         return view('bookings.confirmation', compact('booking'));
     }
 
@@ -214,13 +155,11 @@ class BookingController extends Controller
     {
         $this->authorize('view', $booking);
 
-        // Check if booking has expired
         if ($booking->isExpired()) {
             return redirect()->route('bookings.show', $booking)
                            ->withErrors(['error' => 'This booking has expired and cannot be paid for.']);
         }
 
-        // Check if payment is already completed
         if ($booking->payment_status !== 'pending') {
             return redirect()->route('bookings.show', $booking)
                            ->withErrors(['error' => 'Payment is not required for this booking.']);
@@ -240,7 +179,6 @@ class BookingController extends Controller
             return back()->withErrors(['error' => 'This booking cannot be cancelled.']);
         }
 
-        // Check cancellation policy (e.g., 24 hours before departure)
         $hoursBeforeDeparture = now()->diffInHours($booking->trip->departure_datetime, false);
         if ($hoursBeforeDeparture < 24) {
             return back()->withErrors(['error' => 'Bookings cannot be cancelled less than 24 hours before departure.']);
@@ -248,8 +186,9 @@ class BookingController extends Controller
 
         $booking->update(['status' => 'cancelled']);
 
-        // TODO: Process refund if payment was made
-        // TODO: Send cancellation notification
+        foreach ($booking->bookingSeats as $bookingSeat) {
+            broadcast(new SeatStatusUpdated($booking->trip_id, $bookingSeat->seat_id, 'available'))->toOthers();
+        }
 
         return redirect()->route('bookings.index')
                         ->with('success', 'Booking cancelled successfully.');
@@ -267,22 +206,16 @@ class BookingController extends Controller
         }
 
         DB::beginTransaction();
-
         try {
-            // Delete associated booking seats
+            foreach ($booking->bookingSeats as $bookingSeat) {
+                broadcast(new SeatStatusUpdated($booking->trip_id, $bookingSeat->seat_id, 'available'))->toOthers();
+            }
             $booking->bookingSeats()->delete();
-
-            // Delete associated payments
             $booking->payments()->delete();
-
-            // Delete the booking
             $booking->delete();
-
             DB::commit();
-
             return redirect()->route('bookings.index')
                            ->with('success', 'Booking cancelled successfully.');
-
         } catch (\Exception $e) {
             DB::rollback();
             return back()->withErrors(['error' => 'Failed to cancel booking. Please try again.']);
@@ -292,26 +225,15 @@ class BookingController extends Controller
     /**
      * Update passenger details for a booking
      */
-    public function updatePassenger(Request $request, Booking $booking)
+    public function updatePassenger(UpdatePassengerRequest $request, Booking $booking)
     {
         $this->authorize('view', $booking);
 
-        // Only allow updating if booking is still pending and not expired
         if ($booking->status !== 'pending' || $booking->isExpired()) {
             return back()->withErrors(['error' => 'This booking cannot be modified.']);
         }
 
-        $request->validate([
-            'passenger_name' => 'required|string|max:255',
-            'passenger_phone' => 'required|string|max:20',
-            'passenger_email' => 'nullable|email|max:255',
-        ]);
-
-        $booking->update([
-            'passenger_name' => $request->passenger_name,
-            'passenger_phone' => $request->passenger_phone,
-            'passenger_email' => $request->passenger_email,
-        ]);
+        $booking->update($request->only(['passenger_name', 'passenger_phone', 'passenger_email']));
 
         return redirect()->route('bookings.show', $booking)
                         ->with('success', 'Passenger details updated successfully.');
@@ -323,10 +245,7 @@ class BookingController extends Controller
     public function ticketHistory(Request $request)
     {
         if (!Auth::check()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Please log in to view your ticket history.'
-            ], 401);
+            return response()->json(['success' => false, 'message' => 'Please log in to view your ticket history.'], 401);
         }
 
         $user = Auth::user();
@@ -336,7 +255,7 @@ class BookingController extends Controller
             ->with([
                 'trip.route.fromCity',
                 'trip.route.toCity',
-                'trip.bus.operator.user',
+                'trip.bus.operator',
                 'bookingSeats.seat'
             ])
             ->orderBy('created_at', 'desc')
@@ -346,37 +265,23 @@ class BookingController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'bookings' => $recentBookings->map(function ($booking) {
-                    return [
-                        'id' => $booking->id,
-                        'booking_reference' => $booking->booking_reference,
-                        'route' => $booking->trip->route->fromCity->name . ' → ' . $booking->trip->route->toCity->name,
-                        'departure_date' => $booking->trip->departure_datetime->format('M d, Y'),
-                        'departure_time' => $booking->trip->departure_datetime->format('H:i'),
-                        'passenger_name' => $booking->passenger_name,
-                        'seats' => $booking->bookingSeats->pluck('seat.seat_number')->join(', '),
-                        'total_amount' => $booking->total_amount,
-                        'status' => $booking->status,
-                        'payment_status' => $booking->payment_status,
-                        'created_at' => $booking->created_at->format('M d, Y H:i'),
-                        'url' => route('bookings.show', $booking)
-                    ];
-                })
+                'bookings' => $recentBookings->map(fn($booking) => [
+                    'id' => $booking->id,
+                    'booking_reference' => $booking->booking_reference,
+                    'route' => $booking->trip->route->fromCity->name . ' → ' . $booking->trip->route->toCity->name,
+                    'departure_date' => $booking->trip->departure_datetime->format('M d, Y'),
+                    'departure_time' => $booking->trip->departure_datetime->format('H:i'),
+                    'passenger_name' => $booking->passenger_name,
+                    'seats' => $booking->bookingSeats->pluck('seat.seat_number')->join(', '),
+                    'total_amount' => $booking->total_amount,
+                    'status' => $booking->status,
+                    'payment_status' => $booking->payment_status,
+                    'created_at' => $booking->created_at->format('M d, Y H:i'),
+                    'url' => route('bookings.show', $booking)
+                ])
             ]);
         }
 
         return view('bookings.ticket-history', compact('recentBookings'));
-    }
-
-    /**
-     * Generate a unique booking reference
-     */
-    private function generateBookingReference(): string
-    {
-        do {
-            $reference = 'BNG' . strtoupper(Str::random(6));
-        } while (Booking::where('booking_reference', $reference)->exists());
-
-        return $reference;
     }
 }

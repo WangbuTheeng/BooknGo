@@ -67,6 +67,14 @@ class Booking extends Model
     }
 
     /**
+     * The seats that belong to the booking.
+     */
+    public function seats()
+    {
+        return $this->belongsToMany(Seat::class, 'booking_seats');
+    }
+
+    /**
      * Get the payment for this booking
      */
     public function payment()

@@ -170,6 +170,9 @@
                             <p class="text-sm text-gray-600">
                                 <span class="font-medium">Bus:</span> {{ $booking->trip->bus->name ?: $booking->trip->bus->registration_number }}
                             </p>
+                             <p class="text-sm text-gray-600">
+                                <span class="font-medium">Bus Number:</span> {{ $booking->trip->bus->bus_number }}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -284,6 +287,10 @@
                         <p class="font-medium text-gray-700">Route:</p>
                         <p class="text-gray-900">{{ $booking->trip->route->fromCity->name }} → {{ $booking->trip->route->toCity->name }}</p>
                         <p class="text-gray-600">{{ $booking->trip->departure_datetime->format('M d, Y • H:i') }}</p>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-700">Bus Number:</p>
+                        <p class="text-gray-900">{{ $booking->trip->bus->bus_number }}</p>
                     </div>
                     <div>
                         <p class="font-medium text-gray-700">Seats & Payment:</p>

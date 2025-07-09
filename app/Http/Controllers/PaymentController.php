@@ -4,16 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Booking;
-use App\Services\ESewaService;
-use App\Services\StripeService;
-use App\Services\KhaltiService;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class PaymentController extends Controller
 {
+    protected $paymentService;
+
+    public function __construct(PaymentService $paymentService)
+    {
+        $this->paymentService = $paymentService;
+    }
+
     /**
      * Display a listing of payments
      */
@@ -61,35 +65,17 @@ class PaymentController extends Controller
             return back()->withErrors(['error' => 'Payment amount does not match booking total.']);
         }
 
-        DB::beginTransaction();
-        
         try {
-            // Create payment record
-            $payment = Payment::create([
-                'booking_id' => $booking->id,
-                'method' => $request->payment_method,
-                'amount' => $request->amount,
-                'transaction_id' => $this->generateTransactionId(),
-                'payment_status' => 'pending',
-            ]);
+            $payment = $this->paymentService->processPayment($booking, $request->payment_method, $request->all());
 
-            // For cash payments, mark as pending (to be confirmed by operator)
             if ($request->payment_method === 'Cash') {
-                $booking->update(['status' => 'booked']);
-
-                DB::commit();
-
                 return redirect()->route('bookings.show', $booking)
                                ->with('success', 'Booking confirmed! Please pay cash to the operator.');
             }
 
-            // For digital payments, redirect to payment gateway
-            DB::commit();
-            
             return $this->redirectToPaymentGateway($payment, $request->payment_method);
 
         } catch (\Exception $e) {
-            DB::rollback();
             return back()->withErrors(['error' => 'Failed to process payment. Please try again.']);
         }
     }
@@ -97,40 +83,18 @@ class PaymentController extends Controller
     /**
      * Handle payment gateway callback
      */
-    public function callback(Request $request, Payment $payment)
+    public function callback(Request $request, Payment $payment, string $gateway)
     {
-        // This would handle callbacks from eSewa, Khalti, etc.
-        // For now, we'll simulate successful payment
-        
-        if ($request->has('success') && $request->success == 'true') {
-            DB::beginTransaction();
-            
-            try {
-                $payment->update([
-                    'payment_status' => 'success',
-                    'gateway_transaction_id' => $request->get('transaction_id'),
-                    'gateway_response' => json_encode($request->all()),
-                ]);
+        $gatewayService = app("App\\Services\\{$gateway}Service");
+        $result = $gatewayService->handleCallback($request, $payment);
 
-                $payment->booking->update(['payment_status' => 'paid', 'status' => 'bought']);
-
-                DB::commit();
-
-                return redirect()->route('bookings.confirmation', $payment->booking)
-                               ->with('success', 'Payment successful! Your booking is confirmed.');
-
-            } catch (\Exception $e) {
-                DB::rollback();
-                return redirect()->route('bookings.payment', $payment->booking)
-                               ->withErrors(['error' => 'Payment verification failed. Please try again.']);
-            }
+        if ($result['status'] === 'success') {
+            return redirect()->route('bookings.confirmation', $payment->booking)
+                           ->with('success', 'Payment successful! Your booking is confirmed.');
         }
 
-        // Payment failed
-        $payment->update(['payment_status' => 'failed']);
-        
         return redirect()->route('bookings.payment', $payment->booking)
-                       ->withErrors(['error' => 'Payment failed. Please try again.']);
+                       ->withErrors(['error' => $result['message']]);
     }
 
     /**
@@ -164,141 +128,9 @@ class PaymentController extends Controller
 
         return back()->with('success', 'Cash payment confirmed successfully.');
     }
-
-    /**
-     * Generate a unique transaction ID
-     */
-    private function generateTransactionId(): string
-    {
-        do {
-            $transactionId = 'TXN' . strtoupper(Str::random(8));
-        } while (Payment::where('transaction_id', $transactionId)->exists());
-
-        return $transactionId;
-    }
-
-    /**
-     * Redirect to payment gateway
-     */
     private function redirectToPaymentGateway(Payment $payment, string $method)
     {
-        if ($method === 'eSewa') {
-            $esewaService = new ESewaService();
-            $formData = $esewaService->generatePaymentForm($payment->booking, $payment);
-            $paymentUrl = $esewaService->getPaymentUrl();
-
-            return view('payments.esewa', compact('payment', 'formData', 'paymentUrl'));
-        } elseif ($method === 'Stripe') {
-            $stripeService = new StripeService();
-            try {
-                $paymentIntent = $stripeService->createPaymentIntent($payment->booking, $payment);
-                $publishableKey = $stripeService->getPublishableKey();
-
-                return view('payments.stripe', compact('payment', 'paymentIntent', 'publishableKey'));
-            } catch (\Exception $e) {
-                return back()->withErrors(['error' => 'Failed to initialize Stripe payment: ' . $e->getMessage()]);
-            }
-        } elseif ($method === 'Khalti') {
-            $khaltiService = new KhaltiService();
-            $result = $khaltiService->initiatePayment($payment->booking, $payment);
-            
-            if ($result['status'] === 'success') {
-                return view('payments.khalti', compact('payment', 'result'));
-            } else {
-                return back()->withErrors(['error' => 'Failed to initialize Khalti payment: ' . $result['message']]);
-            }
-        }
-
-        return back()->withErrors(['error' => 'Payment method not supported yet.']);
-    }
-
-    /**
-     * Handle eSewa success callback
-     */
-    public function esewaSuccess(Request $request)
-    {
-        $esewaService = new ESewaService();
-        $result = $esewaService->handleSuccessCallback($request);
-
-        if ($result['status'] === 'success') {
-            return redirect()->route('bookings.show', $result['payment']->booking)
-                           ->with('success', 'Payment completed successfully!');
-        }
-
-        return redirect()->route('bookings.index')
-                       ->withErrors(['error' => $result['message']]);
-    }
-
-    /**
-     * Handle eSewa failure callback
-     */
-    public function esewaFailure(Request $request)
-    {
-        $esewaService = new ESewaService();
-        $result = $esewaService->handleFailureCallback($request);
-
-        return redirect()->route('bookings.index')
-                       ->withErrors(['error' => $result['message']]);
-    }
-
-    /**
-     * Handle Stripe success callback
-     */
-    public function stripeSuccess(Request $request)
-    {
-        $request->validate([
-            'payment_intent' => 'required|string',
-        ]);
-
-        $stripeService = new StripeService();
-        $result = $stripeService->handleSuccessfulPayment($request->payment_intent);
-
-        if ($result['status'] === 'success') {
-            return redirect()->route('bookings.show', $result['payment']->booking)
-                           ->with('success', 'Payment completed successfully!');
-        }
-
-        return redirect()->route('bookings.index')
-                       ->withErrors(['error' => $result['message']]);
-    }
-
-    /**
-     * Handle Stripe failure callback
-     */
-    public function stripeFailure(Request $request)
-    {
-        $request->validate([
-            'payment_intent' => 'required|string',
-            'error' => 'nullable|string',
-        ]);
-
-        $stripeService = new StripeService();
-        $result = $stripeService->handleFailedPayment($request->payment_intent, $request->error);
-
-        return redirect()->route('bookings.index')
-                       ->withErrors(['error' => $result['message']]);
-    }
-
-    /**
-     * Handle Khalti payment callback
-     */
-    public function khaltiCallback(Request $request)
-    {
-        $khaltiService = new KhaltiService();
-        
-        // Check if payment was successful
-        if ($request->get('status') === 'Completed') {
-            $result = $khaltiService->handleSuccessCallback($request);
-            
-            if ($result['status'] === 'success') {
-                return redirect()->route('bookings.show', $result['payment']->booking)
-                               ->with('success', 'Payment completed successfully!');
-            }
-        } else {
-            $result = $khaltiService->handleFailureCallback($request);
-        }
-
-        return redirect()->route('bookings.index')
-                       ->withErrors(['error' => $result['message']]);
+        $gateway = app("App\\Services\\{$method}Service");
+        return $gateway->redirect($payment);
     }
 }

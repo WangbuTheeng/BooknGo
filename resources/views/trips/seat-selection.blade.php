@@ -6,7 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Select Seats - {{ $trip->route->fromCity->name }} to {{ $trip->route->toCity->name }} | BooknGo</title>
-        <meta name="description" content="Select your seats for {{ $trip->bus->name }} from {{ $trip->route->fromCity->name }} to {{ $trip->route->toCity->name }}">
+        <meta name="description" content="Select your seats for {{ $trip->bus->name }} ({{ $trip->bus->registration_number }}) from {{ $trip->route->fromCity->name }} to {{ $trip->route->toCity->name }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -43,6 +43,7 @@
                 <div class="lg:col-span-2">
                     <div class="bg-gray-900 rounded-lg shadow-lg p-6">
                         <div class="text-center mb-4">
+                            <h1 class="text-3xl font-bold text-white">{{ $trip->bus->name }} ({{ $trip->bus->registration_number }})</h1>
                             <h2 class="text-2xl font-bold text-green-400">SCREEN SIDE</h2>
                         </div>
                         <div class="bg-gray-800 rounded-lg p-6">
@@ -171,7 +172,18 @@
                             this.loading = false;
                             // Restore selected seats if user came back after login
                             this.restoreSelectedSeats();
+                            this.listenForSeatUpdates();
                         }
+                    },
+
+                    listenForSeatUpdates() {
+                        window.Echo.private(`trip.${this.tripId}`)
+                            .listen('SeatStatusUpdated', (e) => {
+                                const seat = this.seats.find(s => s.id === e.seatId);
+                                if (seat) {
+                                    seat.available = e.status === 'available';
+                                }
+                            });
                     },
 
                     restoreSelectedSeats() {

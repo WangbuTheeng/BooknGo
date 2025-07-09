@@ -14,6 +14,7 @@ class Route extends Model
         'to_city_id',
         'estimated_km',
         'estimated_time',
+        'operator_id',
     ];
 
     protected $casts = [
@@ -37,6 +38,22 @@ class Route extends Model
     }
 
     /**
+     * Get the origin city for the route.
+     */
+    public function origin()
+    {
+        return $this->fromCity();
+    }
+
+    /**
+     * Get the destination city for the route.
+     */
+    public function destination()
+    {
+        return $this->toCity();
+    }
+
+    /**
      * Get all trips for this route
      */
     public function trips()
@@ -50,5 +67,13 @@ class Route extends Model
     public function getRouteNameAttribute()
     {
         return $this->fromCity->name . ' - ' . $this->toCity->name;
+    }
+
+    /**
+     * Get the operator that owns this route
+     */
+    public function operator()
+    {
+        return $this->belongsTo(Operator::class);
     }
 }

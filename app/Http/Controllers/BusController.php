@@ -15,14 +15,15 @@ class BusController extends Controller
      */
     public function index()
     {
+        $this->authorize('viewAny', Bus::class);
+
         $user = Auth::user();
 
         if ($user->isAdmin()) {
             $buses = Bus::with(['operator.user'])->paginate(15);
-        } elseif ($user->isOperator()) {
-            $buses = $user->operator->buses()->with(['operator.user'])->paginate(15);
         } else {
-            abort(403, 'Unauthorized access');
+            // User is an operator, as per BusPolicy
+            $buses = $user->operator->buses()->with(['operator.user'])->paginate(15);
         }
 
         return view('buses.index', compact('buses'));
@@ -33,11 +34,7 @@ class BusController extends Controller
      */
     public function create()
     {
-        $user = Auth::user();
-
-        if (!$user->isOperator() && !$user->isAdmin()) {
-            abort(403, 'Unauthorized access');
-        }
+        $this->authorize('create', Bus::class);
 
         return view('buses.create');
     }
@@ -47,14 +44,13 @@ class BusController extends Controller
      */
     public function store(Request $request)
     {
-        $user = Auth::user();
+        $this->authorize('create', Bus::class);
 
-        if (!$user->isOperator() && !$user->isAdmin()) {
-            abort(403, 'Unauthorized access');
-        }
+        $user = Auth::user();
 
         $request->validate([
             'registration_number' => 'required|string|max:50|unique:buses',
+            'bus_number' => 'nullable|string|max:20',
             'name' => 'nullable|string|max:100',
             'type' => 'required|in:AC,Deluxe,Normal,Sleeper',
             'total_seats' => 'required|integer|min:1|max:100',
@@ -66,6 +62,7 @@ class BusController extends Controller
         $bus = Bus::create([
             'operator_id' => $operatorId,
             'registration_number' => $request->registration_number,
+            'bus_number' => $request->bus_number,
             'name' => $request->name,
             'type' => $request->type,
             'total_seats' => $request->total_seats,
@@ -110,6 +107,7 @@ class BusController extends Controller
 
         $request->validate([
             'registration_number' => 'required|string|max:50|unique:buses,registration_number,' . $bus->id,
+            'bus_number' => 'nullable|string|max:20',
             'name' => 'nullable|string|max:100',
             'type' => 'required|in:AC,Deluxe,Normal,Sleeper',
             'total_seats' => 'required|integer|min:1|max:100',
@@ -121,6 +119,7 @@ class BusController extends Controller
 
         $bus->update([
             'registration_number' => $request->registration_number,
+            'bus_number' => $request->bus_number,
             'name' => $request->name,
             'type' => $request->type,
             'total_seats' => $request->total_seats,
@@ -160,11 +159,15 @@ class BusController extends Controller
     private function generateSeats(Bus $bus, int $totalSeats)
     {
         for ($i = 1; $i <= $totalSeats; $i++) {
-            Seat::create([
-                'bus_id' => $bus->id,
-                'seat_number' => (string) $i,
-                'position' => $this->calculateSeatPosition($i, $totalSeats),
-            ]);
+            Seat::firstOrCreate(
+                [
+                    'bus_id' => $bus->id,
+                    'seat_number' => (string) $i,
+                ],
+                [
+                    'position' => $this->calculateSeatPosition($i, $totalSeats),
+                ]
+            );
         }
     }
 
@@ -176,11 +179,15 @@ class BusController extends Controller
         if ($newCount > $oldCount) {
             // Add new seats
             for ($i = $oldCount + 1; $i <= $newCount; $i++) {
-                Seat::create([
-                    'bus_id' => $bus->id,
-                    'seat_number' => (string) $i,
-                    'position' => $this->calculateSeatPosition($i, $newCount),
-                ]);
+                Seat::firstOrCreate(
+                    [
+                        'bus_id' => $bus->id,
+                        'seat_number' => (string) $i,
+                    ],
+                    [
+                        'position' => $this->calculateSeatPosition($i, $newCount),
+                    ]
+                );
             }
         } elseif ($newCount < $oldCount) {
             // Remove excess seats (only if they have no bookings)
